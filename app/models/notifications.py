@@ -1,6 +1,5 @@
 import uuid
 import sqlalchemy as sa
-from enum import Enum
 from typing import TYPE_CHECKING
 from datetime import datetime
 from sqlalchemy import UUID as PG_UUID
@@ -10,12 +9,6 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.users import User
-
-
-class NotificationType(str, Enum):
-    MESSAGE = "message"
-    TASK_ASSIGNED = "task_assigned"
-    ANNOUNCEMENT = "announcement"
 
 
 class Notification(Base):

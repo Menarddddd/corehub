@@ -11,21 +11,22 @@ if TYPE_CHECKING:
     from app.models.users import User
 
 
-class Task(Base):
-    __tablename__ = "tasks"
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
 
     id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    user_id: Mapped[uuid.UUID | None] = mapped_column(
-        sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    title: Mapped[str] = mapped_column(sa.String(100), nullable=False)
-    description: Mapped[str] = mapped_column(sa.Text, nullable=False)
-    status: Mapped[str] = mapped_column(sa.String(50), nullable=False)
-    priority: Mapped[str] = mapped_column(sa.String(50), nullable=False)
-    due_date: Mapped[datetime] = mapped_column(
+    hashed_token: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False
+    )
+    user_agent: Mapped[str | None] = mapped_column(sa.String(100), nullable=True)
+    revoked: Mapped[bool] = mapped_column(
+        sa.Boolean, default=False, server_default=sa.text("false"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
@@ -38,4 +39,4 @@ class Task(Base):
     )
 
     # RELATIONSHIP
-    user: Mapped["User | None"] = relationship(back_populates="tasks")
+    user: Mapped["User"] = relationship(back_populates="refresh_tokens")
