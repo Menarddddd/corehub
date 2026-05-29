@@ -7,7 +7,7 @@ from app.core.security import hash_password
 from app.models.users import User
 from app import models
 from app.core.database import AsyncSessionLocal, Base, engine
-from app.schemas.enums import Role
+from app.schemas.enum import Role
 
 
 async def create_default_admin():

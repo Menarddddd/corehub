@@ -6,10 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.users import User
-from app.repositories.users import UserRepository
+from app.repositories.department import DepartmentRepository
+from app.repositories.user import UserRepository
 from app.repositories.refresh_token import RefreshRepository
-from app.schemas.enums import Role
+from app.schemas.enum import Role
 from app.services.auth import AuthService
+from app.services.department import DepartmentService
 from app.services.users import UserService
 
 
@@ -34,3 +36,10 @@ def get_auth_service(db: Annotated[AsyncSession, Depends(get_db)]) -> AuthServic
 def get_user_service(db: Annotated[AsyncSession, Depends(get_db)]) -> UserService:
     repo = UserRepository(db)
     return UserService(repo)
+
+
+def get_department_service(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DepartmentService:
+    repo = DepartmentRepository(db)
+    return DepartmentService(repo)

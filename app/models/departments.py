@@ -22,7 +22,10 @@ class Department(Base):
         sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime(timezone=True), onupdate=sa.func.now(), nullable=True
+        sa.DateTime(timezone=True),
+        server_default=sa.func.now(),
+        onupdate=sa.func.now(),
+        nullable=True,
     )
 
     # RELATIONSHIP

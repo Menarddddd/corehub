@@ -3,7 +3,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.schemas.cursor import CursorPageInfo
-from app.schemas.enums import Role
+from app.schemas.enum import Role
 
 
 class Token(BaseModel):

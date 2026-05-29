@@ -12,7 +12,7 @@ from pwdlib import PasswordHash
 
 from app.core.database import get_db
 from app.core.settings import settings
-from app.repositories.users import UserRepository
+from app.repositories.user import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 password_hash = PasswordHash.recommended()

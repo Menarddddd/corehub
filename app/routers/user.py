@@ -6,8 +6,8 @@ from fastapi.routing import APIRouter
 from app.core.dependencies import get_user_service, required_roles
 from app.core.security import get_current_user
 from app.models.users import User
-from app.schemas.enums import Role
-from app.schemas.users import (
+from app.schemas.enum import Role
+from app.schemas.user import (
     UserCreate,
     UserPageResponse,
     UserResponse,

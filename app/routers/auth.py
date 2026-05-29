@@ -6,7 +6,7 @@ from fastapi.routing import APIRouter
 from app.core.dependencies import get_auth_service
 from app.core.security import get_current_user
 from app.models.users import User
-from app.schemas.users import RefreshTokenRequest, Token
+from app.schemas.user import RefreshTokenRequest, Token
 from app.services.auth import AuthService
 
 router = APIRouter()

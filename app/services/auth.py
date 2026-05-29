@@ -10,7 +10,7 @@ from app.core.security import (
 )
 from app.models.refresh_tokens import RefreshToken
 from app.repositories.refresh_token import RefreshRepository
-from app.repositories.users import UserRepository
+from app.repositories.user import UserRepository
 
 
 class AuthService:

@@ -10,12 +10,12 @@ from app.core.exceptions import (
     FieldNotFoundException,
 )
 from app.core.security import hash_password, verify_password
-from app.utils.users import clean_user_info
+from app.utils.user import clean_user_info
 from app.models.users import User
-from app.repositories.users import UserRepository
+from app.repositories.user import UserRepository
 from app.schemas.cursor import CursorPageInfo
-from app.schemas.enums import Role
-from app.schemas.users import (
+from app.schemas.enum import Role
+from app.schemas.user import (
     ChangePassword,
     UserCreate,
     UserPageResponse,
