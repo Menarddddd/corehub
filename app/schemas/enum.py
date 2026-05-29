@@ -9,7 +9,7 @@ class Role(str, Enum):
 
 
 # tasks
-class Status(str, Enum):
+class TaskStatus(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"

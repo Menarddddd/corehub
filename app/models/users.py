@@ -47,8 +47,17 @@ class User(Base):
 
     # RELATIONSHIPS
     department: Mapped["Department | None"] = relationship(back_populates="users")
-    tasks: Mapped[list["Task"]] = relationship(
-        back_populates="user", cascade="save-update", passive_deletes="all"
+    assigned_tasks: Mapped[list["Task"]] = relationship(
+        back_populates="assigned_to",
+        foreign_keys="Task.assigned_to_id",
+        cascade="save-update",
+        passive_deletes="all",
+    )
+    created_tasks: Mapped[list["Task"]] = relationship(
+        back_populates="created_by",
+        foreign_keys="Task.created_by_id",
+        cascade="save-update",
+        passive_deletes="all",
     )
     sent_messages: Mapped[list["Message"]] = relationship(
         back_populates="sender",

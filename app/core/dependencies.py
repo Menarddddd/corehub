@@ -7,11 +7,13 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.users import User
 from app.repositories.department import DepartmentRepository
+from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
 from app.repositories.refresh_token import RefreshRepository
 from app.schemas.enum import Role
 from app.services.auth import AuthService
 from app.services.department import DepartmentService
+from app.services.task import TaskService
 from app.services.users import UserService
 
 
@@ -43,3 +45,10 @@ def get_department_service(
 ) -> DepartmentService:
     repo = DepartmentRepository(db)
     return DepartmentService(repo)
+
+
+def get_tasks_service(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TaskService:
+    repo = TaskRepository(db)
+    return TaskService(repo)

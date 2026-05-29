@@ -41,7 +41,7 @@ class DepartmentService:
     async def get_department_service(self, department_id: UUID) -> Department | None:
         department = await self.repo.get_by_id(department_id)
         if not department:
-            raise FieldNotFoundException("department", str(department_id))
+            raise FieldNotFoundException("departments", str(department_id))
 
         return department
 
@@ -53,7 +53,7 @@ class DepartmentService:
             return await self.repo.save(new_department)
 
         except IntegrityError:
-            raise DuplicateEntryException("department", form_data.name)
+            raise DuplicateEntryException("departments", form_data.name)
 
     async def update_department_service(
         self,
@@ -66,7 +66,7 @@ class DepartmentService:
 
         department = await self.repo.get_by_id(department_id)
         if not department:
-            raise FieldNotFoundException("department", str(department_id))
+            raise FieldNotFoundException("departments", str(department_id))
 
         for key, val in department_data.items():
             setattr(department, key, val)
@@ -76,6 +76,6 @@ class DepartmentService:
     async def delete_department_service(self, department_id: UUID) -> None:
         department = await self.repo.get_by_id(department_id)
         if not department:
-            raise FieldNotFoundException("department", str(department_id))
+            raise FieldNotFoundException("departments", str(department_id))
 
         await self.repo.delete(department)
