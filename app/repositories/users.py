@@ -1,10 +1,10 @@
-from uuid import UUID
 from typing import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.base import BaseRepository
 
 from app.models.users import User
+from app.utils.cursor import decode_cursor
 
 
 class UserRepository(BaseRepository[User]):
@@ -24,12 +24,26 @@ class UserRepository(BaseRepository[User]):
     async def get_by_email(self, email: str, *options) -> User | None:
         return await self._get_user(User.email == email, *options)
 
-    async def get_by_department(self, department_id: UUID) -> Sequence[User]:
-        stmt = select(User).where(User.department_id == department_id)
-        result = await self.db.execute(stmt)
-        return result.scalars().all()
+    async def get_users(
+        self,
+        *conditions,
+        limit: int,
+        cursor: str | None,
+        options: list | None = None,
+    ) -> Sequence[User]:
+        stmt = select(User)
 
-    async def get_by_role(self, role: str) -> Sequence[User]:
-        stmt = select(User).where(User.role == role)
+        if conditions:
+            stmt = stmt.where(*conditions)
+
+        if cursor:
+            decoded_cursor = decode_cursor(cursor)
+            stmt = stmt.where(User.id > decoded_cursor.item_id)
+
+        if options:
+            stmt = stmt.options(*options)
+
+        stmt = stmt.order_by(User.id.asc()).limit(limit + 1)
+
         result = await self.db.execute(stmt)
         return result.scalars().all()

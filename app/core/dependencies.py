@@ -7,7 +7,9 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.users import User
 from app.repositories.users import UserRepository
+from app.repositories.refresh_token import RefreshRepository
 from app.schemas.enums import Role
+from app.services.auth import AuthService
 from app.services.users import UserService
 
 
@@ -23,7 +25,12 @@ def required_roles(*roles: Role):
     return role_checker
 
 
+def get_auth_service(db: Annotated[AsyncSession, Depends(get_db)]) -> AuthService:
+    user_repo = UserRepository(db)
+    refresh_repo = RefreshRepository(db)
+    return AuthService(user_repo, refresh_repo)
+
+
 def get_user_service(db: Annotated[AsyncSession, Depends(get_db)]) -> UserService:
-    """Wires DB to repo and pass repo to service"""
     repo = UserRepository(db)
     return UserService(repo)

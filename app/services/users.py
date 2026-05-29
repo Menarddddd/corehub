@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 from uuid import UUID
+from datetime import datetime, timezone
 
 from sqlalchemy.exc import IntegrityError
 
@@ -10,16 +10,48 @@ from app.core.exceptions import (
     FieldNotFoundException,
 )
 from app.core.security import hash_password, verify_password
-from app.core.utils import clean_user_info
+from app.utils.users import clean_user_info
 from app.models.users import User
 from app.repositories.users import UserRepository
-from app.schemas.users import ChangePassword, UserCreate, UserUpdate
+from app.schemas.cursor import CursorPageInfo
+from app.schemas.enums import Role
+from app.schemas.users import (
+    ChangePassword,
+    UserCreate,
+    UserPageResponse,
+    UserUpdate,
+    UserResponse,
+)
+from app.utils.cursor import get_cursor_info
 
 
 class UserService:
 
     def __init__(self, repo: UserRepository):
         self.repo = repo
+
+    async def get_users_service(
+        self,
+        department_id: UUID | None,
+        role: Role | None,
+        limit: int,
+        cursor: str | None,
+    ) -> UserPageResponse:
+        conditions = []
+        if department_id is not None:
+            conditions.append(User.department_id == department_id)
+
+        if role is not None:
+            conditions.append(User.role == role.value)
+
+        users = await self.repo.get_users(*conditions, limit=limit, cursor=cursor)
+
+        users, has_next, next_cursor = get_cursor_info(users, limit)
+
+        return UserPageResponse(
+            items=[UserResponse.model_validate(user) for user in users],
+            page_info=CursorPageInfo(has_next=has_next, next_cursor=next_cursor),
+        )
 
     async def create_user_service(self, form_data: UserCreate) -> User:
         user_data = clean_user_info(form_data.model_dump())

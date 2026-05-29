@@ -1,24 +1,46 @@
 from typing import Annotated
-from fastapi import Depends, status
+from fastapi import Depends, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.routing import APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
-from app.schemas.users import Token
-from app.services.auth import login_service
+from app.core.dependencies import get_auth_service
+from app.core.security import get_current_user
+from app.models.users import User
+from app.schemas.users import RefreshTokenRequest, Token
+from app.services.auth import AuthService
 
 router = APIRouter()
 
 
 @router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
 async def login(
+    request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[AuthService, Depends(get_auth_service)],
 ):
-    return await login_service(form_data.username, form_data.password, db)
+    return await service.login_service(
+        form_data.username,
+        form_data.password,
+        request.headers.get("user-agent"),
+    )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    form_data: RefreshTokenRequest,
+    service: Annotated[AuthService, Depends(get_auth_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    return await service.logout_service(form_data.refresh_token)
 
 
 @router.post("/refresh", response_model=Token, status_code=status.HTTP_200_OK)
-async def refresh(token):
-    pass
+async def refresh(
+    request: Request,
+    form_data: RefreshTokenRequest,
+    service: Annotated[AuthService, Depends(get_auth_service)],
+):
+    return await service.refresh_service(
+        form_data.refresh_token,
+        request.headers.get("user-agent"),
+    )

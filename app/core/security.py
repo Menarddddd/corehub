@@ -90,14 +90,16 @@ def create_access_token(data: dict) -> str:
     return payload
 
 
-def create_refresh_token() -> str:
-    raw_token = secrets.token_urlsafe()
-
-    # saved to db later
-    hashed_token = hmac.new(
+def hash_refresh_token(raw_token: str) -> str:
+    return hmac.new(
         key=settings.REFRESH_SECRET_KEY.get_secret_value().encode(),
         msg=raw_token.encode(),
         digestmod=hashlib.sha256,
     ).hexdigest()
+
+
+def create_refresh_token() -> str:
+    raw_token = secrets.token_urlsafe()
+    hashed_token = hash_refresh_token(raw_token)  # save to db later
 
     return raw_token

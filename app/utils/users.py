@@ -1,4 +1,7 @@
 def clean_user_info(user_data: dict) -> dict:
+    """
+    Removes white spaces and lowercase for unique properties
+    """
     cleaned = {}
 
     for key, val in user_data.items():

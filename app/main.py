@@ -1,5 +1,4 @@
 from fastapi import FastAPI
-from
 from app.core.exceptions import register_exception_handlers
 from app.core.setup import lifespan
 from app.routers import api_router

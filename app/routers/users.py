@@ -1,16 +1,36 @@
 from typing import Annotated
 from uuid import UUID
-from fastapi import Depends, status
+from fastapi import Depends, Query, status
 from fastapi.routing import APIRouter
 
 from app.core.dependencies import get_user_service, required_roles
 from app.core.security import get_current_user
 from app.models.users import User
 from app.schemas.enums import Role
-from app.schemas.users import UserCreate, UserResponse, UserUpdate, ChangePassword
+from app.schemas.users import (
+    UserCreate,
+    UserPageResponse,
+    UserResponse,
+    UserUpdate,
+    ChangePassword,
+)
 from app.services.users import UserService
 
 router = APIRouter()
+
+
+@router.get("", response_model=UserPageResponse, status_code=status.HTTP_200_OK)
+async def get_users(
+    service: Annotated[UserService, Depends(get_user_service)],
+    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    department_id: UUID | None = None,
+    role: Role | None = None,
+    limit: Annotated[int, Query(ge=1, lt=50)] = 10,
+    cursor: Annotated[str | None, Query()] = None,
+):
+    return await service.get_users_service(
+        department_id, role, limit=limit, cursor=cursor
+    )
 
 
 @router.post(

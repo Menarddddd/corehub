@@ -2,12 +2,17 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+from app.schemas.cursor import CursorPageInfo
 from app.schemas.enums import Role
 
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "Bearer"
+
+
+class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
@@ -50,3 +55,10 @@ class ChangePassword(BaseModel):
         if self.current_password == self.new_password:
             raise ValueError("New password cannot be the same as the current password")
         return self
+
+
+class UserPageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[UserResponse]
+    page_info: CursorPageInfo
