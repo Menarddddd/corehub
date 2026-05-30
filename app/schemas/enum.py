@@ -21,6 +21,17 @@ class TaskPriority(str, Enum):
     HIGH = "high"
 
 
+class TaskView(str, Enum):
+    ASSIGNED = "assigned"
+    CREATED = "created"
+
+
+class TaskDue(str, Enum):
+    OVERDUE = "overdue"
+    TODAY = "today"
+    THIS_WEEK = "this_week"
+
+
 # notifications
 class NotificationType(str, Enum):
     MESSAGE = "message"

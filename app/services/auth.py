@@ -20,7 +20,7 @@ class AuthService:
         self.refresh_repo = refresh_repo
 
     async def login_service(self, username: str, password: str, user_agent: str | None):
-        user = await self.user_repo.get_by_username(username)
+        user = await self.user_repo.get_by_username(username.lower())
         if not user or not verify_password(password, user.hashed_password):
             raise CredentialsException()
 
