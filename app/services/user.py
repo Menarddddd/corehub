@@ -37,7 +37,13 @@ class UserService:
         limit: int,
         cursor: str | None,
     ) -> UserPageResponse:
+        """
+        Fetch all users with optional filters and cursor-based pagination.
+        Builds conditions dynamically based on provided filter arguments.
+        Only adds a condition if the filter value is not None.
+        """
         conditions = []
+
         if department_id is not None:
             conditions.append(User.department_id == department_id)
 
@@ -45,7 +51,6 @@ class UserService:
             conditions.append(User.role == role.value)
 
         users = await self.repo.get_users(*conditions, limit=limit, cursor=cursor)
-
         users, has_next, next_cursor = get_cursor_info(users, limit)
 
         return UserPageResponse(
@@ -54,6 +59,12 @@ class UserService:
         )
 
     async def create_user_service(self, form_data: UserCreate) -> User:
+        """
+        Create a new user account with a hashed password.
+        Strips and normalizes user input before saving.
+        Raises 409 if the username or email already exists.
+        Raises 400 for any other integrity error.
+        """
         user_data = clean_user_info(form_data.model_dump())
 
         new_user = User(
@@ -77,14 +88,26 @@ class UserService:
             else:
                 raise BadRequestException("Account cannot be created")
 
-    async def get_user_service(self, user_id: UUID) -> User | None:
+    async def get_user_service(self, user_id: UUID) -> User:
+        """
+        Fetch a single user by their ID.
+        Raises 404 if the user does not exist.
+        """
         user = await self.repo.get_by_id(user_id)
         if not user:
             raise FieldNotFoundException("users", str(user_id))
-
         return user
 
     async def update_user_service(self, user_id: UUID, form_data: UserUpdate) -> User:
+        """
+        Update allowed fields of an existing user.
+        Uses exclude_unset=True so only explicitly provided
+        fields are applied to the user object.
+        Strips and normalizes user input before saving.
+        Raises 404 if the user does not exist.
+        Raises 400 if no fields are provided in the request body.
+        Raises 409 if the new username or email is already taken.
+        """
         user = await self.repo.get_by_id(user_id)
         if not user:
             raise FieldNotFoundException("users", str(user_id))
@@ -112,6 +135,11 @@ class UserService:
     async def change_password_service(
         self, form_data: ChangePassword, current_user: User
     ) -> None:
+        """
+        Change the password of the currently authenticated user.
+        Verifies the current password before applying the new one.
+        Raises 401 if the current password does not match.
+        """
         if not verify_password(
             form_data.current_password, current_user.hashed_password
         ):
@@ -121,6 +149,13 @@ class UserService:
         await self.repo.update(current_user)
 
     async def delete_user_service(self, user_id: UUID) -> None:
+        """
+        Soft delete a user by setting their deleted_at timestamp to now.
+        The user record is kept in the database for audit and history purposes.
+        Deleted users can no longer authenticate since get_current_user
+        checks for deleted_at before allowing access.
+        Raises 404 if the user does not exist.
+        """
         user = await self.repo.get_by_id(user_id)
         if not user:
             raise FieldNotFoundException("users", str(user_id))

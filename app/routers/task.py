@@ -3,12 +3,9 @@ from uuid import UUID
 from fastapi import Depends, Query, status
 from fastapi.routing import APIRouter
 
-from app.core.dependencies import (
-    check_task_owner,
-    get_tasks_service,
-    required_roles,
-)
 from app.core.security import get_current_user
+from app.dependencies.task import check_task_owner, get_tasks_service
+from app.dependencies.user import required_roles
 from app.models.tasks import Task
 from app.models.users import User
 from app.schemas.enum import Role, TaskDue, TaskPriority, TaskStatus, TaskView

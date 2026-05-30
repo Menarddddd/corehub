@@ -1,4 +1,5 @@
 from typing import Sequence
+from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.base import BaseRepository
 

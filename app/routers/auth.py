@@ -3,8 +3,8 @@ from fastapi import Depends, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.routing import APIRouter
 
-from app.core.dependencies import get_auth_service
 from app.core.security import get_current_user
+from app.dependencies.auth import get_auth_service
 from app.models.users import User
 from app.schemas.user import RefreshTokenRequest, Token
 from app.services.auth import AuthService

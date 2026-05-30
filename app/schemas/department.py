@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict
 
 from app.schemas.cursor import CursorPageInfo
+from app.schemas.user import UserResponse
 
 
 class DepartmentBase(BaseModel):
@@ -32,4 +33,12 @@ class DepartmentPageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     items: list[DepartmentResponse]
+    page_info: CursorPageInfo
+
+
+class DepartmentWithUserPageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    department: DepartmentResponse
+    items: list[UserResponse]
     page_info: CursorPageInfo
