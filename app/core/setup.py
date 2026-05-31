@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.core.security import hash_password
 from app.models.users import User
-from app import models
+from app import models  # loads models in memory, don't delete
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.schemas.enum import Role
 

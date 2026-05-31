@@ -9,6 +9,7 @@ from app.core.security import get_current_user
 from app.models.tasks import Task
 from app.models.users import User
 from app.repositories.task import TaskRepository
+from app.repositories.user import UserRepository
 from app.services.task import TaskService
 
 
@@ -16,7 +17,8 @@ def get_tasks_service(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> TaskService:
     repo = TaskRepository(db)
-    return TaskService(repo)
+    user_repo = UserRepository(db)
+    return TaskService(repo, user_repo)
 
 
 async def check_task_owner(

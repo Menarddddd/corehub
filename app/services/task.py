@@ -9,6 +9,7 @@ from app.core.exceptions import (
 from app.models.tasks import Task
 from app.models.users import User
 from app.repositories.task import TaskRepository
+from app.repositories.user import UserRepository
 from app.schemas.cursor import CursorPageInfo
 from app.schemas.enum import Role, TaskDue, TaskPriority, TaskStatus, TaskView
 from app.schemas.task import (
@@ -22,8 +23,9 @@ from app.utils.cursor import get_cursor_info
 
 
 class TaskService:
-    def __init__(self, repo: TaskRepository):
+    def __init__(self, repo: TaskRepository, user_repo: UserRepository):
         self.repo = repo
+        self.user_repo = user_repo
 
     def _build_due_conditions(self, due: TaskDue) -> list:
         """
@@ -171,6 +173,15 @@ class TaskService:
         # Prevent self-assignment
         if form_data.assigned_to_id == current_user.id:
             raise BadRequestException("You cannot assign a task to yourself")
+
+        assigned_user = await self.user_repo.get_by_id(form_data.assigned_to_id)
+        if not assigned_user:
+            raise FieldNotFoundException("users", str(form_data.assigned_to_id))
+
+        if assigned_user.department_id != current_user.department_id:
+            raise ForbiddenException(
+                "You cannot assign a task to employees outside your department"
+            )
 
         new_task = Task(
             assigned_to_id=form_data.assigned_to_id,
