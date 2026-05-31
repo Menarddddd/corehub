@@ -45,3 +45,8 @@ class AnnouncementPriority(str, Enum):
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+
+
+class AnnouncementStatus(str, Enum):
+    ACTIVE = "active"
+    EXPIRED = "expired"
