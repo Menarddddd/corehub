@@ -41,10 +41,22 @@ class NotificationTitle(str, Enum):
 
 
 class NotificationType(str, Enum):
-    MESSAGE = "message"
+    # Tasks
     TASK_ASSIGNED = "task_assigned"
-    UPDATED_TASK = "updated_task"
-    ANNOUNCEMENT = "announcement"
+    TASK_STATUS_CHANGED = "task_status_changed"
+    TASK_UPDATE = "task_changed"
+    TASK_DUE_DATE_CHANGED = "task_due_date_changed"
+    TASK_DELETED = "task_deleted"
+
+    # Messages
+    NEW_MESSAGE = "new_message"
+
+    # Department
+    DEPARTMENT_ASSIGNED = "department_assigned"
+    DEPARTMENT_REMOVED = "department_removed"
+
+    # Account
+    ROLE_CHANGED = "role_changed"
 
 
 # announcements

@@ -249,7 +249,7 @@ class TaskService:
 
         notification = Notification(
             user_id=updated_task.assigned_to_id,
-            type=NotificationType.UPDATED_TASK.value,
+            type=NotificationType.TASK_STATUS_CHANGED.value,
             title=NotificationTitle.UPDATED_TASK.value,
             body=updated_task.description,
         )
@@ -279,7 +279,7 @@ class TaskService:
 
         notification = Notification(
             user_id=updated_task.assigned_to_id,
-            type=NotificationType.UPDATED_TASK.value,
+            type=NotificationType.TASK_UPDATE.value,
             title=NotificationTitle.UPDATED_TASK.value,
             body=updated_task.description,
         )
@@ -299,7 +299,7 @@ class TaskService:
 
         notification = Notification(
             user_id=updated_task.assigned_to_id,
-            type=NotificationType.UPDATED_TASK.value,
+            type=NotificationType.TASK_DUE_DATE_CHANGED.value,
             title=NotificationTitle.UPDATED_TASK.value,
             body=updated_task.description,
         )
