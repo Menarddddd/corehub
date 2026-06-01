@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from sqlalchemy import select
 
 
+from app.core.redis import close_redis, init_redis
 from app.core.security import hash_password
 from app.models.users import User
 from app import models  # loads models in memory, don't delete
@@ -36,11 +37,10 @@ async def create_default_admin():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
+    await init_redis()
     await create_default_admin()
 
     yield
 
+    await close_redis()
     await engine.dispose()

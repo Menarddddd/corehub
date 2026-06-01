@@ -1,9 +1,11 @@
+import redis.asyncio as aioredis
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.redis import get_redis
 from app.core.security import get_current_user
 from app.models.users import User
 from app.repositories.user import UserRepository
@@ -11,9 +13,12 @@ from app.schemas.enum import Role
 from app.services.user import UserService
 
 
-def get_user_service(db: Annotated[AsyncSession, Depends(get_db)]) -> UserService:
+def get_user_service(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+) -> UserService:
     repo = UserRepository(db)
-    return UserService(repo)
+    return UserService(repo, redis)
 
 
 def required_roles(*roles: Role):

@@ -1,3 +1,4 @@
+import redis.asyncio as aioredis
 from typing import Annotated
 from uuid import UUID
 from fastapi import Depends, Query, status
@@ -64,6 +65,7 @@ async def get_my_tasks(
     If task_view is omitted, defaults to showing assigned tasks.
     Supports optional filtering by status, priority, and due date range.
     Accessible by all authenticated roles.
+    Uses caching with TTL of 180 or 3 mins
     """
     return await service.get_user_tasks_service(
         current_user.id,
@@ -145,6 +147,7 @@ async def get_user_tasks(
     Retrieve a paginated list of ALL tasks of the user_id specified.
     Supports optional filtering by status, priority, and due date range.
     Restricted to ADMIN and MANAGER roles only.
+    Uses caching with TTL of 180 or 3 mins
     """
     return await service.get_user_tasks_service(
         user_id=user_id,

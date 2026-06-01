@@ -10,6 +10,8 @@ class Settings(BaseSettings):
 
     DATABASE_URL: SecretStr
 
+    REDIS_URL: SecretStr
+
     ACCESS_SECRET_KEY: SecretStr
     ACCESS_MINUTES_EXPIRES: int
 

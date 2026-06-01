@@ -1,8 +1,10 @@
+import redis.asyncio as aioredis
 from typing import Annotated
 from uuid import UUID
 from fastapi import Depends, Query, status
 from fastapi.routing import APIRouter
 
+from app.core.redis import get_redis
 from app.core.security import get_current_user
 from app.dependencies.user import get_user_service, required_roles
 from app.models.users import User
@@ -55,7 +57,10 @@ async def create_user(
 
 
 @router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK)
-async def get_profile(current_user: Annotated[User, Depends(get_current_user)]):
+async def get_profile(
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
     """
     Retrieve the profile of the currently authenticated user.
     No extra DB query needed since get_current_user already

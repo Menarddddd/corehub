@@ -1,3 +1,6 @@
+import json
+
+import redis.asyncio as aioredis
 from datetime import date, timedelta
 from uuid import UUID
 
@@ -38,10 +41,12 @@ class TaskService:
         repo: TaskRepository,
         user_repo: UserRepository,
         notif_repo: NotificationRepository,
+        redis: aioredis.Redis,
     ):
         self.repo = repo
         self.user_repo = user_repo
         self.notif_repo = notif_repo
+        self.redis = redis
 
     def _build_due_conditions(self, due: TaskDue) -> list:
         """
@@ -92,6 +97,25 @@ class TaskService:
 
         return conditions
 
+    async def _build_users_cache_key(
+        self,
+        status: TaskStatus | None,
+        priority: TaskPriority | None,
+        due: TaskDue | None,
+        limit: int,
+        cursor: str | None,
+    ) -> str:
+        """
+        Build a unique cache key based on the query parameters.
+        Each unique combination of filters = unique key.
+        """
+        s = status.value if status else "all"
+        p = priority.value if priority else "all"
+        d = due.value if due else "all"
+        c = cursor if cursor else "none"
+
+        return f"task:status:{s}:priority:{p}:due{d}:limit:{limit}:cursor:{c}"
+
     async def get_tasks_service(
         self,
         status: TaskStatus | None,
@@ -103,7 +127,17 @@ class TaskService:
         """
         Fetch all tasks with optional filters and cursor-based pagination.
         Builds conditions dynamically based on provided filter arguments.
+        Implements caching with TTL of 300 or 5 mins
         """
+        cache_key = await self._build_users_cache_key(
+            status=status, priority=priority, due=due, limit=limit, cursor=cursor
+        )
+        cached_data = await self.redis.get(cache_key)
+
+        if cached_data:
+            data = json.loads(cached_data)
+            return TaskPageResponse(**data)
+
         conditions = self._build_common_conditions(
             status=status,
             priority=priority,
@@ -113,10 +147,16 @@ class TaskService:
         tasks = await self.repo.get_tasks(*conditions, limit=limit, cursor=cursor)
         tasks, has_next, next_cursor = get_cursor_info(tasks, limit)
 
-        return TaskPageResponse(
+        response = TaskPageResponse(
             items=[TaskResponse.model_validate(task) for task in tasks],
             page_info=CursorPageInfo(has_next=has_next, next_cursor=next_cursor),
         )
+
+        await self.redis.set(
+            cache_key, json.dumps(response.model_dump(), default=str), ex=300
+        )
+
+        return response
 
     async def get_user_tasks_service(
         self,
@@ -133,7 +173,19 @@ class TaskService:
         Defaults to showing tasks ASSIGNED to the user if task_view is not provided.
         task_view=assigned → tasks where assigned_to_id matches current user.
         task_view=created  → tasks where created_by_id matches current user.
+        Implements caching with TTL of 180 or 3 mins
         """
+        result = await self._build_users_cache_key(
+            status=status, priority=priority, due=due, limit=limit, cursor=cursor
+        )
+        cache_key = result.replace("users:", f"users:{user_id}")
+
+        cached_data = await self.redis.get(cache_key)
+
+        if cached_data:
+            data = json.loads(cached_data)
+            return TaskPageResponse(**data)
+
         conditions = self._build_common_conditions(
             status=status, priority=priority, due=due
         )
@@ -147,10 +199,18 @@ class TaskService:
         tasks = await self.repo.get_tasks(*conditions, limit=limit, cursor=cursor)
         tasks, has_next, next_cursor = get_cursor_info(tasks, limit)
 
-        return TaskPageResponse(
+        response = TaskPageResponse(
             items=[TaskResponse.model_validate(task) for task in tasks],
             page_info=CursorPageInfo(has_next=has_next, next_cursor=next_cursor),
         )
+
+        await self.redis.set(
+            cache_key,
+            json.dumps(response.model_dump(), default=str),
+            ex=180,
+        )
+
+        return response
 
     async def get_task_service(self, task_id: UUID) -> Task:
         """
@@ -162,20 +222,39 @@ class TaskService:
             raise FieldNotFoundException("tasks", str(task_id))
         return task
 
-    async def get_my_task_service(self, task_id: UUID, current_user: User) -> Task:
+    async def get_my_task_service(
+        self, task_id: UUID, current_user: User
+    ) -> TaskResponse:
         """
         Fetch a single task that is assigned to the current user.
         Raises 404 if the task does not exist.
         Raises 403 if the task is not assigned to the current user.
+        Uses caching TTL 5 mins or 300 secs
         """
+        cache_key = f"task:{task_id}:user:{current_user.id}"
+        cached_data = await self.redis.get(cache_key)
+
+        if cached_data:
+            data = json.loads(cached_data)
+            return TaskResponse(**data)
+
         task = await self.repo.get_by_id(task_id)
+
         if not task:
             raise FieldNotFoundException("tasks", str(task_id))
 
         if task.assigned_to_id != current_user.id:
             raise ForbiddenException("You are not assigned to this task")
 
-        return task
+        response = TaskResponse.model_validate(task)
+
+        await self.redis.set(
+            cache_key,
+            json.dumps(response.model_dump(), default=str),
+            ex=300,
+        )
+
+        return response
 
     async def create_task_service(
         self, form_data: TaskCreate, current_user: User

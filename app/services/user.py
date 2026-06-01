@@ -1,3 +1,5 @@
+import json
+import redis.asyncio as aioredis
 from uuid import UUID
 from datetime import datetime, timezone
 
@@ -9,6 +11,7 @@ from app.core.exceptions import (
     DuplicateEntryException,
     FieldNotFoundException,
 )
+from app.core.redis import get_redis
 from app.core.security import hash_password, verify_password
 from app.utils.user import clean_user_info
 from app.models.users import User
@@ -27,8 +30,26 @@ from app.utils.cursor import get_cursor_info
 
 class UserService:
 
-    def __init__(self, repo: UserRepository):
+    def __init__(self, repo: UserRepository, redis: aioredis.Redis):
         self.repo = repo
+        self.redis = redis
+
+    async def _build_users_cache_key(
+        self,
+        department_id: UUID | None,
+        role: Role | None,
+        limit: int,
+        cursor: str | None,
+    ) -> str:
+        """
+        Build a unique cache key based on the query parameters.
+        Each unique combination of filters = unique key.
+        """
+        dept = str(department_id) if department_id else "all"
+        r = role.value if role else "all"
+        c = cursor if cursor else "none"
+
+        return f"users:dept:{dept}:role:{r}:limit:{limit}:cursor:{c}"
 
     async def get_users_service(
         self,
@@ -42,6 +63,19 @@ class UserService:
         Builds conditions dynamically based on provided filter arguments.
         Only adds a condition if the filter value is not None.
         """
+        cache_key = await self._build_users_cache_key(
+            department_id=department_id,
+            role=role,
+            limit=limit,
+            cursor=cursor,
+        )
+
+        cached_data = await self.redis.get(cache_key)
+
+        if cached_data:
+            data = json.loads(cached_data)
+            return UserPageResponse(**data)
+
         conditions = []
 
         if department_id is not None:
@@ -53,10 +87,20 @@ class UserService:
         users = await self.repo.get_users(*conditions, limit=limit, cursor=cursor)
         users, has_next, next_cursor = get_cursor_info(users, limit)
 
-        return UserPageResponse(
+        response = UserPageResponse(
             items=[UserResponse.model_validate(user) for user in users],
             page_info=CursorPageInfo(has_next=has_next, next_cursor=next_cursor),
         )
+
+        # response.model_dump() converts Pydantic model to dict
+        # json.dumps() with default=str handles UUID and datetime
+        await self.redis.set(
+            cache_key,
+            json.dumps(response.model_dump(), default=str),
+            ex=300,  # Cache for 5 minutes
+        )
+
+        return response
 
     async def create_user_service(self, form_data: UserCreate) -> User:
         """

@@ -1,3 +1,4 @@
+import redis.asyncio as aioredis
 from typing import Annotated
 from uuid import UUID
 from fastapi import Depends
@@ -5,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import FieldNotFoundException, ForbiddenException
+from app.core.redis import get_redis
 from app.core.security import get_current_user
 from app.models.tasks import Task
 from app.models.users import User
@@ -16,11 +18,12 @@ from app.services.task import TaskService
 
 def get_tasks_service(
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
 ) -> TaskService:
     repo = TaskRepository(db)
     user_repo = UserRepository(db)
     notif_repo = NotificationRepository(db)
-    return TaskService(repo, user_repo, notif_repo)
+    return TaskService(repo, user_repo, notif_repo, redis)
 
 
 async def check_task_owner(
