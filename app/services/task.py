@@ -6,12 +6,22 @@ from app.core.exceptions import (
     FieldNotFoundException,
     ForbiddenException,
 )
+from app.models.notifications import Notification
 from app.models.tasks import Task
 from app.models.users import User
+from app.repositories.notification import NotificationRepository
 from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
 from app.schemas.cursor import CursorPageInfo
-from app.schemas.enum import Role, TaskDue, TaskPriority, TaskStatus, TaskView
+from app.schemas.enum import (
+    NotificationTitle,
+    NotificationType,
+    Role,
+    TaskDue,
+    TaskPriority,
+    TaskStatus,
+    TaskView,
+)
 from app.schemas.task import (
     TaskCreate,
     TaskPageResponse,
@@ -23,9 +33,15 @@ from app.utils.cursor import get_cursor_info
 
 
 class TaskService:
-    def __init__(self, repo: TaskRepository, user_repo: UserRepository):
+    def __init__(
+        self,
+        repo: TaskRepository,
+        user_repo: UserRepository,
+        notif_repo: NotificationRepository,
+    ):
         self.repo = repo
         self.user_repo = user_repo
+        self.notif_repo = notif_repo
 
     def _build_due_conditions(self, due: TaskDue) -> list:
         """
@@ -169,6 +185,7 @@ class TaskService:
         Prevents self-assignment for all roles.
         Managers can only assign tasks to employees.
         Removes broad exception catching to expose real errors during development.
+        Notifies assigned user after creating task
         """
         # Prevent self-assignment
         if form_data.assigned_to_id == current_user.id:
@@ -192,6 +209,17 @@ class TaskService:
             priority=form_data.priority,
             due_date=form_data.due_date,
         )
+
+        notification = Notification(
+            user_id=form_data.assigned_to_id,
+            type=NotificationType.TASK_ASSIGNED.value,
+            title=NotificationTitle.TASK,
+            body=form_data.description,
+        )
+
+        # Notification for assigned user
+        await self.notif_repo.save(notification)
+
         return await self.repo.save(new_task)
 
     async def update_status_task_service(
@@ -217,7 +245,18 @@ class TaskService:
                 )
 
         task.status = form_data.status
-        return await self.repo.update(task)
+        updated_task = await self.repo.update(task)
+
+        notification = Notification(
+            user_id=updated_task.assigned_to_id,
+            type=NotificationType.UPDATED_TASK.value,
+            title=NotificationTitle.UPDATED_TASK.value,
+            body=updated_task.description,
+        )
+
+        await self.notif_repo.save(notification)
+
+        return updated_task
 
     async def update_task_service(
         self,
@@ -236,7 +275,18 @@ class TaskService:
         for key, val in task_data.items():
             setattr(task, key, val)
 
-        return await self.repo.update(task)
+        updated_task = await self.repo.update(task)
+
+        notification = Notification(
+            user_id=updated_task.assigned_to_id,
+            type=NotificationType.UPDATED_TASK.value,
+            title=NotificationTitle.UPDATED_TASK.value,
+            body=updated_task.description,
+        )
+
+        await self.notif_repo.save(notification)
+
+        return updated_task
 
     async def update_due_date_service(self, task: Task, due_date: date) -> Task:
         """
@@ -245,7 +295,18 @@ class TaskService:
         Uses repo.update since the task already exists in the database.
         """
         task.due_date = due_date
-        return await self.repo.update(task)
+        updated_task = await self.repo.update(task)
+
+        notification = Notification(
+            user_id=updated_task.assigned_to_id,
+            type=NotificationType.UPDATED_TASK.value,
+            title=NotificationTitle.UPDATED_TASK.value,
+            body=updated_task.description,
+        )
+
+        await self.notif_repo.save(notification)
+
+        return updated_task
 
     async def delete_task_service(self, task_id: UUID) -> None:
         """

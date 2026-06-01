@@ -4,8 +4,12 @@ from fastapi import Depends, Query, status
 from fastapi.routing import APIRouter
 
 from app.core.security import get_current_user
-from app.dependencies.announcement import get_announcement_service
+from app.dependencies.announcement import (
+    check_announcement_owner,
+    get_announcement_service,
+)
 from app.dependencies.user import required_roles
+from app.models.announcements import Announcement
 from app.models.users import User
 from app.schemas.announcement import (
     AnnouncementCreate,
@@ -84,8 +88,8 @@ async def get_announcement(
     status_code=status.HTTP_200_OK,
 )
 async def update_announcement(
-    announcement_id: UUID,
     form_data: AnnouncementUpdate,
+    announcement: Annotated[Announcement, Depends(check_announcement_owner)],
     service: Annotated[AnnouncementService, Depends(get_announcement_service)],
     current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
 ):
@@ -96,7 +100,7 @@ async def update_announcement(
     Raises 400 if no fields are provided.
     Restricted to ADMIN role only.
     """
-    return await service.update_announcement_service(announcement_id, form_data)
+    return await service.update_announcement_service(announcement, form_data)
 
 
 @router.delete("/{announcement_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -100,7 +100,7 @@ class AnnouncementService:
 
     async def update_announcement_service(
         self,
-        announcement_id: UUID,
+        announcement: Announcement,
         form_data: AnnouncementUpdate,
     ) -> Announcement:
         """
@@ -113,10 +113,6 @@ class AnnouncementService:
         announcement_data = form_data.model_dump(exclude_unset=True)
         if not announcement_data:
             raise BadRequestException("No fields to update")
-
-        announcement = await self.repo.get_by_id(announcement_id)
-        if not announcement:
-            raise FieldNotFoundException("announcements", str(announcement_id))
 
         for key, val in announcement_data.items():
             setattr(announcement, key, val)

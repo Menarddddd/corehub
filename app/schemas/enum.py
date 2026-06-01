@@ -33,9 +33,17 @@ class TaskDue(str, Enum):
 
 
 # notifications
+class NotificationTitle(str, Enum):
+    TASK = "New Task Assigned!"
+    UPDATED_TASK = "New Updated Task"
+    MESSAGE = "New Message Received"
+    ANNOUNCEMENT = "New Announcement"
+
+
 class NotificationType(str, Enum):
     MESSAGE = "message"
     TASK_ASSIGNED = "task_assigned"
+    UPDATED_TASK = "updated_task"
     ANNOUNCEMENT = "announcement"
 
 
