@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from app.models.notifications import Notification
     from app.models.announcements import Announcement
     from app.models.refresh_tokens import RefreshToken
+    from app.models.conversation_members import ConversationMember
+    from app.models.conversations import Conversation
 
 
 class User(Base):
@@ -59,15 +61,20 @@ class User(Base):
         cascade="save-update",
         passive_deletes="all",
     )
-    sent_messages: Mapped[list["Message"]] = relationship(
-        back_populates="sender",
-        foreign_keys="Message.sender_id",
+    created_conversations: Mapped[list["Conversation"]] = relationship(
+        back_populates="created_by",
+        foreign_keys="Conversation.created_by_id",
         cascade="save-update",
         passive_deletes="all",
     )
-    received_messages: Mapped[list["Message"]] = relationship(
-        back_populates="receiver",
-        foreign_keys="Message.receiver_id",
+    conversation_members: Mapped[list["ConversationMember"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    sent_messages: Mapped[list["Message"]] = relationship(
+        back_populates="sender",
+        foreign_keys="Message.sender_id",
         cascade="save-update",
         passive_deletes="all",
     )

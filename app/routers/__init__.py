@@ -6,6 +6,7 @@ from app.routers.department import router as department_router
 from app.routers.task import router as task_router
 from app.routers.announcement import router as announcement_router
 from app.routers.notification import router as notification_router
+from app.routers.conversation import router as conversation_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
@@ -19,4 +20,7 @@ api_router.include_router(
 )
 api_router.include_router(
     notification_router, prefix="/notifications", tags=["notifications"]
+)
+api_router.include_router(
+    conversation_router, prefix="/conversations", tags=["conversations"]
 )

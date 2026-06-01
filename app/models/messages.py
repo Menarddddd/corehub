@@ -9,6 +9,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.users import User
+    from app.models.conversations import Conversation
 
 
 class Message(Base):
@@ -17,16 +18,15 @@ class Message(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    sender_id: Mapped[uuid.UUID] = mapped_column(
-        sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=False
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        sa.ForeignKey("conversations.id", ondelete="CASCADE"),
+        nullable=False,
     )
-    receiver_id: Mapped[uuid.UUID] = mapped_column(
-        sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=False
+    sender_id: Mapped[uuid.UUID | None] = mapped_column(
+        sa.ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
     )
-    content: Mapped[str] = mapped_column(sa.String(500), nullable=False)
-    is_read: Mapped[bool] = mapped_column(
-        sa.Boolean, default=None, server_default=sa.text("false"), nullable=False
-    )
+    content: Mapped[str] = mapped_column(sa.Text, nullable=False)
     sent_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
     )
@@ -37,10 +37,9 @@ class Message(Base):
         nullable=False,
     )
 
-    # RELATIONSHIP
+    # RELATIONSHIPS
+    conversation: Mapped["Conversation"] = relationship(back_populates="messages")
     sender: Mapped["User | None"] = relationship(
-        back_populates="sent_messages", foreign_keys=[sender_id]
-    )
-    receiver: Mapped["User | None"] = relationship(
-        back_populates="received_messages", foreign_keys=[receiver_id]
+        foreign_keys="Message.sender_id",
+        back_populates="sent_messages",
     )

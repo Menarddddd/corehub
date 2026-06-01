@@ -2,6 +2,8 @@ from app.models.users import User
 from app.models.tasks import Task
 from app.models.notifications import Notification
 from app.models.messages import Message
+from app.models.conversations import Conversation
+from app.models.conversation_members import ConversationMember
 from app.models.departments import Department
 from app.models.announcements import Announcement
 from app.models.refresh_tokens import RefreshToken
