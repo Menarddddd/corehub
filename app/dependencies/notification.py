@@ -11,17 +11,15 @@ from app.models.notifications import Notification
 from app.models.users import User
 from app.repositories.department import DepartmentRepository
 from app.repositories.notification import NotificationRepository
-from app.repositories.user import UserRepository
-from app.services.department import DepartmentService
+from app.services.notification import NotificationService
 
 
 def get_notification_service(
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> DepartmentService:
+) -> NotificationService:
     """Wire DepartmentRepository and UserRepository into DepartmentService."""
-    repo = DepartmentRepository(db)
-    user_repo = UserRepository(db)
-    return DepartmentService(repo, user_repo)
+    repo = NotificationRepository(db)
+    return NotificationService(repo)
 
 
 async def check_notification_owner(

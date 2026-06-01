@@ -29,6 +29,9 @@ class Notification(Base):
     sent_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
     )
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+    )
 
     # RELATIONSHIP
     user: Mapped["User"] = relationship(back_populates="notifications")
