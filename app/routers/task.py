@@ -3,7 +3,6 @@ from uuid import UUID
 from fastapi import Depends, Query, status
 from fastapi.routing import APIRouter
 
-from app.core.redis import get_redis
 from app.core.security import get_current_user
 from app.dependencies.task import check_task_owner, get_tasks_service
 from app.dependencies.user import required_roles

@@ -29,6 +29,16 @@ class ConversationRepository(BaseRepository[Conversation]):
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_all_members(
+        self, conversation_id: UUID
+    ) -> Sequence[ConversationMember]:
+        """Get all members of a conversation."""
+        stmt = select(ConversationMember).where(
+            ConversationMember.conversation_id == conversation_id
+        )
+        result = await self.db.execute(stmt)
+        return result.scalars().all()
+
     async def get_existing_dm(self, user_a: UUID, user_b: UUID) -> Conversation | None:
         """
         Check if a DM conversation already exists between two users.

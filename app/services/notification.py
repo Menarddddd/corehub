@@ -18,10 +18,10 @@ class NotificationService:
         self.redis = redis
 
     async def _build_cache_key(
-        self, user_id: UUID, limit: int, cursor: str | None
+        self, user_id: UUID, limit: int, cursor: str | None, type: str
     ) -> str:
         c = cursor if cursor else "none"
-        return f"notification:user:{user_id}:limit:{limit}:cursor:{c}"
+        return f"notification:user:{user_id}:limit:{limit}:cursor:{c}:type:{type}"
 
     async def _invalidate_notifications_cache(self):
         "Delete all cached tasks"
@@ -35,7 +35,12 @@ class NotificationService:
         Fetch all notifications for the current user
         ordered by most recent first.
         """
-        cache_key = await self._build_cache_key(user_id, limit, cursor)
+        cache_key = await self._build_cache_key(
+            user_id,
+            limit,
+            cursor,
+            "read",
+        )
         cached_data = await self.redis.get(cache_key)
         if cached_data:
             return NotificationPageResponse.model_validate_json(cached_data)
@@ -70,7 +75,7 @@ class NotificationService:
         Fetch only unread notifications for the current user.
         Unread means read_at is NULL.
         """
-        cache_key = await self._build_cache_key(user_id, limit, cursor)
+        cache_key = await self._build_cache_key(user_id, limit, cursor, "unread")
         cached_data = await self.redis.get(cache_key)
         if cached_data:
             return NotificationPageResponse.model_validate_json(cached_data)

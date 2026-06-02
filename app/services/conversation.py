@@ -9,8 +9,10 @@ from app.core.exceptions import (
 )
 from app.models.conversations import Conversation
 from app.models.messages import Message
+from app.models.notifications import Notification
 from app.models.users import User
 from app.repositories.conversation import ConversationRepository
+from app.repositories.notification import NotificationRepository
 from app.repositories.user import UserRepository
 from app.schemas.conversation import (
     ConversationInboxItem,
@@ -21,13 +23,20 @@ from app.schemas.conversation import (
     UpdateGroupRequest,
 )
 from app.schemas.cursor import CursorPageInfo
+from app.schemas.enum import NotificationTitle, NotificationType
 from app.utils.cursor import encode_cursor, get_cursor_info, CursorPayload
 
 
 class ConversationService:
-    def __init__(self, repo: ConversationRepository, user_repo: UserRepository):
+    def __init__(
+        self,
+        repo: ConversationRepository,
+        user_repo: UserRepository,
+        notif_repo: NotificationRepository,
+    ):
         self.repo = repo
         self.user_repo = user_repo
+        self.notif_repo = notif_repo
 
     async def get_inbox_service(
         self, user_id: UUID, limit: int, cursor: str | None
@@ -305,7 +314,23 @@ class ConversationService:
             sender_id=current_user.id,
             content=content,
         )
-        return await self.repo.save_message(message)
+
+        response = await self.repo.save_message(message)
+
+        memberships = await self.repo.get_all_members(conversation_id)
+        for membership in memberships:
+            if membership.user_id == current_user.id:
+                continue
+
+            notification = Notification(
+                user_id=membership.user_id,
+                type=NotificationType.NEW_MESSAGE.value,
+                title=NotificationTitle.MESSAGE.value,
+                body=f"{current_user.username} sent you a message",
+            )
+            await self.notif_repo.save(notification)
+
+        return response
 
     async def delete_message_service(
         self,
