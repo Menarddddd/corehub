@@ -1,5 +1,3 @@
-import json
-
 import redis.asyncio as aioredis
 from datetime import date, timedelta
 from uuid import UUID
@@ -116,6 +114,11 @@ class TaskService:
 
         return f"task:status:{s}:priority:{p}:due{d}:limit:{limit}:cursor:{c}"
 
+    async def _invalidate_task_cache(self):
+        "Delete all cached tasks"
+        async for key in self.redis.scan_iter(match="task:*"):
+            await self.redis.delete(key)
+
     async def get_tasks_service(
         self,
         status: TaskStatus | None,
@@ -135,8 +138,7 @@ class TaskService:
         cached_data = await self.redis.get(cache_key)
 
         if cached_data:
-            data = json.loads(cached_data)
-            return TaskPageResponse(**data)
+            return TaskPageResponse.model_validate_json(cached_data)
 
         conditions = self._build_common_conditions(
             status=status,
@@ -152,9 +154,7 @@ class TaskService:
             page_info=CursorPageInfo(has_next=has_next, next_cursor=next_cursor),
         )
 
-        await self.redis.set(
-            cache_key, json.dumps(response.model_dump(), default=str), ex=300
-        )
+        await self.redis.set(cache_key, response.model_dump_json(), ex=300)
 
         return response
 
@@ -183,8 +183,7 @@ class TaskService:
         cached_data = await self.redis.get(cache_key)
 
         if cached_data:
-            data = json.loads(cached_data)
-            return TaskPageResponse(**data)
+            return TaskPageResponse.model_validate_json(cached_data)
 
         conditions = self._build_common_conditions(
             status=status, priority=priority, due=due
@@ -206,7 +205,7 @@ class TaskService:
 
         await self.redis.set(
             cache_key,
-            json.dumps(response.model_dump(), default=str),
+            response.model_dump_json(),
             ex=180,
         )
 
@@ -235,8 +234,7 @@ class TaskService:
         cached_data = await self.redis.get(cache_key)
 
         if cached_data:
-            data = json.loads(cached_data)
-            return TaskResponse(**data)
+            return TaskResponse.model_validate_json(cached_data)
 
         task = await self.repo.get_by_id(task_id)
 
@@ -250,7 +248,7 @@ class TaskService:
 
         await self.redis.set(
             cache_key,
-            json.dumps(response.model_dump(), default=str),
+            response.model_dump_json(),
             ex=300,
         )
 
@@ -299,7 +297,10 @@ class TaskService:
         # Notification for assigned user
         await self.notif_repo.save(notification)
 
-        return await self.repo.save(new_task)
+        task = await self.repo.save(new_task)
+        await self._invalidate_task_cache()
+
+        return task
 
     async def update_status_task_service(
         self, task_id: UUID, form_data: TaskStatusChange, current_user: User
@@ -334,6 +335,7 @@ class TaskService:
         )
 
         await self.notif_repo.save(notification)
+        await self._invalidate_task_cache()
 
         return updated_task
 
@@ -364,6 +366,7 @@ class TaskService:
         )
 
         await self.notif_repo.save(notification)
+        await self._invalidate_task_cache()
 
         return updated_task
 
@@ -384,6 +387,7 @@ class TaskService:
         )
 
         await self.notif_repo.save(notification)
+        await self._invalidate_task_cache()
 
         return updated_task
 
@@ -397,6 +401,7 @@ class TaskService:
         if not task:
             raise FieldNotFoundException("tasks", str(task_id))
         await self.repo.delete(task)
+        await self._invalidate_task_cache()
 
     async def delete_my_task_service(self, task: Task) -> None:
         """
@@ -404,3 +409,4 @@ class TaskService:
         Task object is pre-validated by check_task_owner dependency.
         """
         await self.repo.delete(task)
+        await self._invalidate_task_cache()

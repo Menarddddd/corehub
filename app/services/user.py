@@ -1,4 +1,3 @@
-import json
 import redis.asyncio as aioredis
 from uuid import UUID
 from datetime import datetime, timezone
@@ -11,7 +10,6 @@ from app.core.exceptions import (
     DuplicateEntryException,
     FieldNotFoundException,
 )
-from app.core.redis import get_redis
 from app.core.security import hash_password, verify_password
 from app.utils.user import clean_user_info
 from app.models.users import User
@@ -49,7 +47,12 @@ class UserService:
         r = role.value if role else "all"
         c = cursor if cursor else "none"
 
-        return f"users:dept:{dept}:role:{r}:limit:{limit}:cursor:{c}"
+        return f"user:dept:{dept}:role:{r}:limit:{limit}:cursor:{c}"
+
+    async def _invalidate_users_cache(self) -> None:
+        "Delete ALL cached user list keys"
+        async for key in self.redis.scan_iter(match="user:*"):
+            await self.redis.delete(key)
 
     async def get_users_service(
         self,
@@ -73,8 +76,7 @@ class UserService:
         cached_data = await self.redis.get(cache_key)
 
         if cached_data:
-            data = json.loads(cached_data)
-            return UserPageResponse(**data)
+            return UserPageResponse.model_validate_json(cached_data)
 
         conditions = []
 
@@ -96,7 +98,7 @@ class UserService:
         # json.dumps() with default=str handles UUID and datetime
         await self.redis.set(
             cache_key,
-            json.dumps(response.model_dump(), default=str),
+            response.model_dump_json(),
             ex=300,  # Cache for 5 minutes
         )
 
@@ -121,7 +123,9 @@ class UserService:
         )
 
         try:
-            return await self.repo.save(new_user)
+            user = await self.repo.save(new_user)
+            await self._invalidate_users_cache()
+            return user
         except IntegrityError as e:
             error = str(e.orig)
 
@@ -132,15 +136,25 @@ class UserService:
             else:
                 raise BadRequestException("Account cannot be created")
 
-    async def get_user_service(self, user_id: UUID) -> User:
+    async def get_user_service(self, user_id: UUID) -> UserResponse:
         """
         Fetch a single user by their ID.
         Raises 404 if the user does not exist.
         """
+        cache_key = f"user:{user_id}"
+        cached_data = await self.redis.get(cache_key)
+        if cached_data:
+            return UserResponse.model_validate_json(cached_data)
+
         user = await self.repo.get_by_id(user_id)
         if not user:
             raise FieldNotFoundException("users", str(user_id))
-        return user
+
+        response = UserResponse.model_validate(user)
+
+        await self.redis.set(cache_key, response.model_dump_json(), ex=3600)
+
+        return UserResponse.model_validate(response)
 
     async def update_user_service(self, user_id: UUID, form_data: UserUpdate) -> User:
         """
@@ -165,7 +179,9 @@ class UserService:
             setattr(user, key, value)
 
         try:
-            return await self.repo.update(user)
+            user = await self.repo.update(user)
+            await self._invalidate_users_cache()
+            return user
         except IntegrityError as e:
             error = str(e.orig)
 
@@ -206,3 +222,4 @@ class UserService:
 
         user.deleted_at = datetime.now(timezone.utc)
         await self.repo.update(user)
+        await self._invalidate_users_cache()

@@ -1,3 +1,4 @@
+import redis.asyncio as aioredis
 from typing import Annotated
 from uuid import UUID
 
@@ -6,20 +7,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import FieldNotFoundException, ForbiddenException
+from app.core.redis import get_redis
 from app.core.security import get_current_user
 from app.models.notifications import Notification
 from app.models.users import User
-from app.repositories.department import DepartmentRepository
 from app.repositories.notification import NotificationRepository
 from app.services.notification import NotificationService
 
 
 def get_notification_service(
     db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
 ) -> NotificationService:
     """Wire DepartmentRepository and UserRepository into DepartmentService."""
     repo = NotificationRepository(db)
-    return NotificationService(repo)
+    return NotificationService(repo, redis)
 
 
 async def check_notification_owner(

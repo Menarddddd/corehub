@@ -1,3 +1,4 @@
+import redis.asyncio as aioredis
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -28,9 +29,26 @@ class DepartmentService:
         self,
         repo: DepartmentRepository,
         user_repo: UserRepository,
+        redis: aioredis.Redis,
     ):
         self.repo = repo
         self.user_repo = user_repo
+        self.redis = redis
+
+    async def _build_cache_key(
+        self,
+        limit: int,
+        cursor: str | None,
+        name: str | None,
+    ) -> str:
+        c = cursor if cursor else "none"
+        n = name if name else "none"
+        return f"department:limit:{limit}:cursor:{c}:name:{name}"
+
+    async def _invalidate_departments_cache(self) -> None:
+        "Delete ALL cached user list keys"
+        async for key in self.redis.scan_iter(match="department:*"):
+            await self.redis.delete(key)
 
     async def get_departments_service(
         self,
@@ -43,6 +61,11 @@ class DepartmentService:
         and cursor-based pagination.
         Builds conditions dynamically based on provided arguments.
         """
+        cache_key = await self._build_cache_key(limit, cursor, name)
+        cached_data = await self.redis.get(cache_key)
+        if cached_data:
+            return DepartmentPageResponse.model_validate_json(cached_data)
+
         conditions = []
 
         if name is not None:
@@ -54,20 +77,42 @@ class DepartmentService:
         )
         departments, has_next, next_cursor = get_cursor_info(departments, limit)
 
-        return DepartmentPageResponse(
+        response = DepartmentPageResponse(
             items=[DepartmentResponse.model_validate(dept) for dept in departments],
             page_info=CursorPageInfo(has_next=has_next, next_cursor=next_cursor),
         )
 
-    async def get_department_service(self, department_id: UUID) -> Department:
+        await self.redis.set(
+            cache_key,
+            response.model_dump_json(),
+            ex=3600,
+        )
+
+        return response
+
+    async def get_department_service(self, department_id: UUID) -> DepartmentResponse:
         """
         Fetch a single department by its ID.
         Raises 404 if the department does not exist.
         """
+        cache_key = f"departments:{department_id}"
+        cached_data = await self.redis.get(cache_key)
+        if cached_data:
+            return DepartmentResponse.model_validate_json(cached_data)
+
         department = await self.repo.get_by_id(department_id)
         if not department:
             raise FieldNotFoundException("departments", str(department_id))
-        return department
+
+        response = DepartmentResponse.model_validate(department)
+
+        await self.redis.set(
+            cache_key,
+            response.model_dump_json(),
+            ex=3600,
+        )
+
+        return response
 
     async def create_department_service(
         self, form_data: DepartmentCreate
@@ -78,7 +123,9 @@ class DepartmentService:
         """
         try:
             new_department = Department(name=form_data.name)
-            return await self.repo.save(new_department)
+            response = await self.repo.save(new_department)
+            await self._invalidate_departments_cache()
+            return response
         except IntegrityError:
             raise DuplicateEntryException("departments", form_data.name)
 
@@ -93,6 +140,11 @@ class DepartmentService:
         First validates the department exists.
         Then fetches users in that department in paginated chunks.
         """
+        cache_key = f"department:{department_id}:limit:{limit}:cursor:{cursor if cursor else "none"}"
+        cached_data = await self.redis.get(cache_key)
+        if cached_data:
+            return DepartmentWithUserPageResponse.model_validate_json(cached_data)
+
         department = await self.repo.get_by_id(department_id)
         if not department:
             raise FieldNotFoundException("departments", str(department_id))
@@ -105,11 +157,19 @@ class DepartmentService:
 
         users, has_next, next_cursor = get_cursor_info(users, limit)
 
-        return DepartmentWithUserPageResponse(
+        response = DepartmentWithUserPageResponse(
             department=DepartmentResponse.model_validate(department),
             items=[UserResponse.model_validate(user) for user in users],
             page_info=CursorPageInfo(has_next=has_next, next_cursor=next_cursor),
         )
+
+        await self.redis.set(
+            cache_key,
+            response.model_dump_json(),
+            ex=3600,
+        )
+
+        return response
 
     async def update_department_service(
         self,
@@ -136,7 +196,9 @@ class DepartmentService:
             setattr(department, key, val)
 
         try:
-            return await self.repo.update(department)
+            response = await self.repo.update(department)
+            await self._invalidate_departments_cache()
+            return response
         except IntegrityError:
             raise DuplicateEntryException(
                 "departments", department_data.get("name", "")
@@ -153,6 +215,7 @@ class DepartmentService:
         if not department:
             raise FieldNotFoundException("departments", str(department_id))
         await self.repo.delete(department)
+        await self._invalidate_departments_cache()
 
     async def assign_user_service(
         self, department_id: UUID, user_id: UUID
@@ -176,6 +239,7 @@ class DepartmentService:
 
         user.department_id = department_id
         await self.user_repo.update(user)
+        await self._invalidate_departments_cache()
 
         return department
 
@@ -199,3 +263,4 @@ class DepartmentService:
 
         user.department_id = None
         await self.user_repo.update(user)
+        await self._invalidate_departments_cache()

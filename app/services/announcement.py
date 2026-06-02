@@ -1,3 +1,4 @@
+import redis.asyncio as aioredis
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -17,8 +18,9 @@ from app.utils.cursor import get_cursor_info
 
 
 class AnnouncementService:
-    def __init__(self, repo: AnnouncementRepository):
+    def __init__(self, repo: AnnouncementRepository, redis: aioredis.Redis):
         self.repo = repo
+        self.redis = redis
 
     def _build_common_conditions(
         self, status: AnnouncementStatus | None, priority: AnnouncementPriority | None
@@ -37,6 +39,26 @@ class AnnouncementService:
 
         return conditions
 
+    async def _build_cache_key(
+        self,
+        user_id: UUID | None,
+        status: AnnouncementStatus | None,
+        priority: AnnouncementPriority | None,
+        limit: int,
+        cursor: str | None,
+    ) -> str:
+        u = user_id if user_id else "none"
+        s = status if status else "none"
+        p = priority if priority else "none"
+        c = cursor if cursor else "none"
+
+        return f"announcement:user:{u}:status:{s}:priority:{p}:cursor:{c}"
+
+    async def _invalidate_announcements_cache(self) -> None:
+        "Delete ALL cached user list keys"
+        async for key in self.redis.scan_iter(match="announcement:*"):
+            await self.redis.delete(key)
+
     async def get_announcements_service(
         self,
         user_id: UUID | None,
@@ -51,6 +73,13 @@ class AnnouncementService:
         Returns announcements ordered by created_at descending
         so the newest announcements appear first.
         """
+        cache_key = await self._build_cache_key(
+            user_id, status, priority, limit, cursor
+        )
+        cached_data = await self.redis.get(cache_key)
+        if cached_data:
+            return AnnouncementPageResponse.model_validate_json(cached_data)
+
         conditions = self._build_common_conditions(status=status, priority=priority)
 
         if user_id is not None:
@@ -61,7 +90,7 @@ class AnnouncementService:
         )
         announcements, has_next, next_cursor = get_cursor_info(announcements, limit)
 
-        return AnnouncementPageResponse(
+        response = AnnouncementPageResponse(
             items=[
                 AnnouncementResponse.model_validate(announcement)
                 for announcement in announcements
@@ -69,15 +98,39 @@ class AnnouncementService:
             page_info=CursorPageInfo(has_next=has_next, next_cursor=next_cursor),
         )
 
-    async def get_announcement_service(self, announcement_id: UUID) -> Announcement:
+        await self.redis.set(
+            cache_key,
+            response.model_dump_json(),
+            ex=1800,
+        )
+
+        return response
+
+    async def get_announcement_service(
+        self, announcement_id: UUID
+    ) -> AnnouncementResponse:
         """
         Fetch a single announcement by its ID.
         Raises 404 if the announcement does not exist.
         """
+        cache_key = f"announcement:{announcement_id}"
+        cached_data = await self.redis.get(cache_key)
+        if cached_data:
+            return AnnouncementResponse.model_validate_json(cached_data)
+
         announcement = await self.repo.get_by_id(announcement_id)
         if not announcement:
             raise FieldNotFoundException("announcements", str(announcement_id))
-        return announcement
+
+        response = AnnouncementResponse.model_validate(announcement)
+
+        await self.redis.set(
+            cache_key,
+            response.model_dump_json(),
+            ex=1800,
+        )
+
+        return response
 
     async def create_announcement_service(
         self, form_data: AnnouncementCreate, current_user: User
@@ -94,7 +147,9 @@ class AnnouncementService:
                 body=form_data.body,
                 priority=form_data.priority,
             )
-            return await self.repo.save(new_announcement)
+            response = await self.repo.save(new_announcement)
+            await self._invalidate_announcements_cache()
+            return response
         except Exception:
             raise BadRequestException("Could not create announcement")
 
@@ -118,7 +173,9 @@ class AnnouncementService:
             setattr(announcement, key, val)
 
         try:
-            return await self.repo.update(announcement)
+            response = await self.repo.update(announcement)
+            await self._invalidate_announcements_cache()
+            return response
         except Exception:
             raise BadRequestException("Could not update announcement")
 
@@ -132,3 +189,4 @@ class AnnouncementService:
         if not announcement:
             raise FieldNotFoundException("announcements", str(announcement_id))
         await self.repo.delete(announcement)
+        await self._invalidate_announcements_cache()

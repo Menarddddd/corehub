@@ -1,3 +1,4 @@
+import redis.asyncio as aioredis
 from typing import Annotated
 from uuid import UUID
 
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.exceptions import FieldNotFoundException, ForbiddenException
+from app.core.redis import get_redis
 from app.core.security import get_current_user
 from app.models.announcements import Announcement
 from app.models.users import User
@@ -13,9 +15,12 @@ from app.repositories.announcement import AnnouncementRepository
 from app.services.announcement import AnnouncementService
 
 
-async def get_announcement_service(db: Annotated[AsyncSession, Depends(get_db)]):
+async def get_announcement_service(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+):
     repo = AnnouncementRepository(db)
-    return AnnouncementService(repo)
+    return AnnouncementService(repo, redis)
 
 
 async def check_announcement_owner(
