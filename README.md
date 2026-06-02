@@ -1,7 +1,3 @@
-Yes! I know everything about your project. Let me write a comprehensive README for you.
-
-Markdown
-
 # CoreHub API
 
 A production-ready backend REST API built with **FastAPI**, featuring real-time messaging,
