@@ -76,27 +76,7 @@ task management, notifications, and role-based access control.
 - **Service Layer** - Business logic is separated from routes
 - **Dependency Injection** - Clean and testable code
 - **Soft Deletes** - Data is never permanently lost
-- Custom exception handling with consistent error responses
-
----
-
-## Project Structure
-
-corehub/
-├── app/
-│ ├── core/ # Database, Redis, Security, Settings
-│ ├── models/ # SQLAlchemy ORM models
-│ ├── repositories/ # Database query logic
-│ ├── routers/ # API route definitions
-│ ├── schemas/ # Pydantic request/response schemas
-│ ├── services/ # Business logic
-│ └── utils/ # Helper functions
-├── .env.example # Environment variable template
-├── docker-compose.yml
-├── Dockerfile
-└── pyproject.toml
-
-text
+- Custom exception handling with consistent error responsestext
 
 ---
 
@@ -148,6 +128,7 @@ http://localhost:8000/docs
 That's it. Tables are created automatically on first run.
 
 API Overview
+
 Auth
 Method	Endpoint	Description	Access
 POST	/auth/login	Login and get tokens	Public
@@ -162,6 +143,7 @@ GET	/users/{id}	Get user by ID	Admin, Manager
 PATCH	/users/{id}	Update user	Admin, Manager
 POST	/users/{id}	Soft delete user	Admin
 POST	/users/change-password	Change password	All
+
 Tasks
 Method	Endpoint	Description	Access
 GET	/tasks	Get all tasks (paginated)	Admin, Manager
@@ -170,6 +152,7 @@ GET	/tasks/me	Get my tasks	All
 GET	/tasks/{id}	Get task by ID	Admin, Manager
 PATCH	/tasks/{id}	Update task	Admin, Manager
 DELETE	/tasks/{id}	Delete task	Admin
+
 Conversations
 Method	Endpoint	Description	Access
 GET	/conversations	Get inbox	Authenticated
@@ -191,22 +174,33 @@ On first run, a default admin account is created automatically:
 
 text
 
-Username: admin
-Password: admin123
-⚠️ Change the default admin password immediately after first login.
+Username: adminadmin
+Password: adminadmin
 
 Environment Variables
 Variable	Description	Example
+
 DATABASE_USER	PostgreSQL username	corehub
+
 DATABASE_PASSWORD	PostgreSQL password	corehub
+
 DATABASE_NAME	PostgreSQL database name	corehub_db
+
 REDIS_URL	Upstash Redis connection URL	rediss://...
+
 ACCESS_SECRET_KEY	JWT access token secret	your_secret
+
 ACCESS_MINUTES_EXPIRES	Access token expiry (minutes)	30
+
 REFRESH_SECRET_KEY	JWT refresh token secret	your_secret
+
 REFRESH_DAYS_EXPIRES	Refresh token expiry (days)	7
+
 ALGORITHM	JWT algorithm	HS256
+
 AUTO_CREATE_TABLES	Auto create DB tables on startup	true
+
+
 Design Decisions
 Why Cursor-based Pagination?
 Offset pagination (LIMIT/OFFSET) becomes very slow on large datasets because the database still has to scan all the skipped rows. Cursor-based pagination is what Facebook, Twitter, and Instagram use because it stays fast regardless of dataset size.
