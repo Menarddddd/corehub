@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     )
 
     DATABASE_URL: SecretStr
+    DATABASE_USER: str
+    DATABASE_PASSWORD: SecretStr
+    DATABASE_NAME: str
 
     REDIS_URL: SecretStr
 
@@ -19,6 +22,8 @@ class Settings(BaseSettings):
     REFRESH_DAYS_EXPIRES: int
 
     ALGORITHM: str
+
+    AUTO_CREATE_TABLES: bool = False
 
 
 settings = Settings()  # type: ignore
