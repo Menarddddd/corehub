@@ -29,9 +29,10 @@ You can test the live API using these pre-created accounts:
 
 | Role    | Username     | Password     |
 | ------- | ------------ | ------------ |
-| Admin   | adminadmin   | adminadmin   |
 | Manager | demo_manager | demo_manager |
 | Member  | demo_member  | demo_member  |
+
+You can message me to get a demo for admin account
 
 **How to test:**
 
