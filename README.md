@@ -9,6 +9,10 @@ production-ready patterns.
 
 ---
 
+# Live API
+
+- 📖 API Docs: [Swagger UI](https://corehub-amber-acorn-510.fly.dev/docs)
+
 ## 🧠 What is CoreHub?
 
 CoreHub is designed for companies that need a centralized internal system where:
