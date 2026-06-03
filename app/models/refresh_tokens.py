@@ -24,7 +24,7 @@ class RefreshToken(Base):
     expires_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False
     )
-    user_agent: Mapped[str | None] = mapped_column(sa.String(100), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(sa.String(500), nullable=True)
     revoked: Mapped[bool] = mapped_column(
         sa.Boolean, default=False, server_default=sa.text("false"), nullable=False
     )

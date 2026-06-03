@@ -9,10 +9,6 @@ production-ready patterns.
 
 ---
 
-# Live API
-
-- 📖 API Docs: [Swagger UI](https://corehub-amber-acorn-510.fly.dev/docs)
-
 ## 🧠 What is CoreHub?
 
 CoreHub is designed for companies that need a centralized internal system where:
@@ -26,6 +22,25 @@ Think of it like a lightweight internal version of **Slack + Asana + an HR porta
 all powered by one clean backend API.
 
 ---
+
+## 🔑 Demo Accounts
+
+You can test the live API using these pre-created accounts:
+
+| Role    | Username     | Password     |
+| ------- | ------------ | ------------ |
+| Admin   | adminadmin   | adminadmin   |
+| Manager | demo_manager | demo_manager |
+| Member  | demo_member  | demo_member  |
+
+**How to test:**
+
+1. Open the [Live API Docs](https://corehub-amber-acorn-510.fly.dev/docs)
+2. Use `/auth/login` with any account above
+3. Copy the `access_token` from the response
+4. Click the **Authorize** button (top right of Swagger)
+5. Paste the token and click **Authorize**
+6. Now you can test all endpoints
 
 ## ⚙️ Tech Stack
 
