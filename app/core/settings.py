@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     ACCESS_SECRET_KEY: SecretStr
     ACCESS_MINUTES_EXPIRES: int
 
-    REFRESH_SECRET_KEY: SecretStr
+    REFRESH_SECRET_KEY: SecretStr = SecretStr("redis://localhost:6379")
     REFRESH_DAYS_EXPIRES: int
 
     ALGORITHM: str

@@ -18,6 +18,12 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
   web:
     build: .
     container_name: corehub
@@ -25,11 +31,14 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@db:5432/${DATABASE_NAME}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   pg_data:

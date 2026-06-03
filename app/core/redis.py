@@ -7,15 +7,19 @@ redis_client: aioredis.Redis | None = None
 
 
 async def init_redis() -> None:
-    """Initialize Redis connection on app startup."""
     global redis_client
 
-    redis_client = aioredis.from_url(
-        settings.REDIS_URL.get_secret_value(),
-        encoding="utf-8",
-        decode_responses=True,
-        ssl_cert_reqs=None,
-    )
+    url = settings.REDIS_URL.get_secret_value()
+
+    kwargs = {
+        "encoding": "utf-8",
+        "decode_responses": True,
+    }
+
+    if url.startswith("rediss://"):
+        kwargs["ssl_cert_reqs"] = None
+
+    redis_client = aioredis.from_url(url, **kwargs)
 
 
 async def close_redis() -> None:

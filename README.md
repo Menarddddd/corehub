@@ -25,16 +25,16 @@ all powered by one clean backend API.
 
 ## ⚙️ Tech Stack
 
-| Category             | Technology                    |
-| -------------------- | ----------------------------- |
-| **Framework**        | FastAPI (Async)               |
-| **Database**         | PostgreSQL                    |
-| **ORM**              | SQLAlchemy (Async)            |
-| **Caching**          | Redis (Upstash)               |
-| **Authentication**   | JWT (Access + Refresh Tokens) |
-| **Containerization** | Docker + Docker Compose       |
-| **Package Manager**  | UV                            |
-| **Python**           | 3.12                          |
+| Category             | Technology                     |
+| -------------------- | ------------------------------ |
+| **Framework**        | FastAPI (Async)                |
+| **Database**         | PostgreSQL                     |
+| **ORM**              | SQLAlchemy (Async)             |
+| **Caching**          | Redis (Local or Upstash Cloud) |
+| **Authentication**   | JWT (Access + Refresh Tokens)  |
+| **Containerization** | Docker + Docker Compose        |
+| **Package Manager**  | UV                             |
+| **Python**           | 3.12                           |
 
 ---
 
@@ -169,7 +169,7 @@ CoreHub has a full messaging system similar to how **Messenger** or **Slack** wo
 
 **Redis Caching**
 
-Read-heavy endpoints are cached in Redis (Upstash) to reduce database load:
+Read-heavy endpoints are cached in Redis to reduce database load:
 
 - User list and single user lookups
 - Task lists (per user and system-wide)
@@ -177,6 +177,10 @@ Read-heavy endpoints are cached in Redis (Upstash) to reduce database load:
 
 Cache is automatically **invalidated** when data changes (create, update, delete).
 This means users always see fresh data while getting fast responses on repeated reads.
+
+By default, Docker Compose spins up a **local Redis container** automatically.
+If you prefer cloud Redis, you can point `REDIS_URL` to your
+[Upstash](https://upstash.com) instance instead.
 
 **Cursor-based Pagination**
 
@@ -202,6 +206,8 @@ each one to finish — critical for real-world performance.
 CoreHub follows a clean layered architecture:
 Router → Service → Repository → Database
 
+text
+
 - **Repository Layer** — handles all database queries. Nothing else touches the DB.
 - **Service Layer** — handles all business logic and rules. Talks to repositories.
 - **Router Layer** — only handles HTTP concerns (request/response). Talks to services.
@@ -213,6 +219,8 @@ This separation means each layer can be changed independently without breaking o
 
 ## 📁 Project Structure
 
+corehub/
+app/
 core/ # Database, Redis, Security, Settings
 dependencies/ # FastAPI dependency functions
 models/ # SQLAlchemy ORM models
@@ -226,6 +234,8 @@ docker-compose.yml
 Dockerfile
 pyproject.toml
 
+text
+
 ---
 
 ## 🛠️ Getting Started
@@ -237,23 +247,25 @@ pyproject.toml
 
 ### 1. Clone the repository
 
-```bash
-git clone https://github.com/yourusername/corehub.git
+git clone https://github.com/Menarddddd/corehub.git
 cd corehub
-2. Set up environment variables
-Bash
+
+text
+
+### 2. Set up environment variables
 
 cp .env.example .env
-Open .env and fill in your values:
 
-env
+text
 
+Open `.env` and fill in your values:
 DATABASE_USER=corehub
 DATABASE_PASSWORD=corehub
 DATABASE_NAME=corehub_db
 
-# Get from https://upstash.com (free tier available)
-REDIS_URL=YOUR_UPSTASH_REDIS_URL
+Leave empty to use the local Redis container (no signup needed)
+Or paste your Upstash URL here for cloud Redis
+REDIS_URL=
 
 ACCESS_SECRET_KEY=your_access_secret_key
 ACCESS_MINUTES_EXPIRES=30
@@ -263,121 +275,166 @@ REFRESH_DAYS_EXPIRES=7
 
 ALGORITHM=HS256
 AUTO_CREATE_TABLES=true
-3. Run with Docker Compose
-Bash
+
+text
+
+### 3. Run with Docker Compose
 
 docker compose up --build
+
+text
+
+This starts:
+
+- PostgreSQL database
+- Redis (local container — no external signup needed)
+- FastAPI application
+
 Database tables are created automatically on first run.
 
-4. Open the API docs
+### 4. Open the API docs
+
 http://localhost:8000/docs
 
-5. Login with the default admin account
+text
+
+### 5. Login with the default admin account
+
 Username: adminadmin
 Password: adminadmin
-⚠️ Change the default admin password immediately after first login.
 
-📡 API Overview
-Auth
-Method	Endpoint	Description	Access
-POST	/auth/login	Login and receive access + refresh tokens	Public
-POST	/auth/refresh	Get new tokens using refresh token	Public
-POST	/auth/logout	Logout and blacklist refresh token	Authenticated
+text
 
-Users
-Method	Endpoint	Description	Access
-GET	/users	Get all users (paginated, filterable)	Admin, Manager
-POST	/users/create	Create a new user	Admin
-GET	/users/me	Get current user profile	All
-POST	/users/change-password	Change own password	All
-GET	/users/{id}	Get user by ID	Admin, Manager
-PATCH	/users/{id}	Update user details	Admin, Manager
-POST	/users/{id}	Soft delete a user	Admin
+> ⚠️ Change the default admin password immediately after first login.
 
-Departments
-Method	Endpoint	Description	Access
-GET	/departments	Get all departments (paginated)	Admin, Manager
-POST	/departments	Create a department	Admin
-GET	/departments/{id}	Get department by ID	Admin, Manager
-PATCH	/departments/{id}	Update department	Admin
-DELETE	/departments/{id}	Delete department	Admin
-GET	/departments/{id}/users	Get users in a department	Admin, Manager
-PATCH	/departments/{id}/assign/{user_id}	Assign user to department	Admin
-PATCH	/departments/{id}/remove/{user_id}	Remove user from department	Admin
+---
 
-Tasks
-Method	Endpoint	Description	Access
-GET	/tasks	Get all tasks (paginated, filterable)	Admin, Manager
-POST	/tasks	Create and assign a task	Admin, Manager
-GET	/tasks/my	Get my tasks (assigned or created)	All
-GET	/tasks/my/{id}	Get single task assigned to me	All
-GET	/tasks/{id}	Get any task by ID	Admin, Manager
-GET	/tasks/{user_id}/all	Get all tasks of a specific user	Admin, Manager
-PATCH	/tasks/{id}	Update task details	Admin, Manager (creator only)
-PATCH	/tasks/status/{id}	Update task status	All
-PATCH	/tasks/due-date/{id}	Update task due date	Admin, Manager (creator only)
-DELETE	/tasks/my/{id}	Delete own task	Admin, Manager (creator only)
-DELETE	/tasks/{id}	Hard delete any task	Admin
+## 📡 API Overview
 
-Conversations & Messaging
-Method	Endpoint	Description	Access
-GET	/conversations	Get inbox with unread counts	All
-POST	/conversations/dm	Start a DM conversation	All
-POST	/conversations/group	Create a group conversation	All
-GET	/conversations/{id}	Get conversation details	Member
-PATCH	/conversations/{id}	Update group name	Group Admin
-DELETE	/conversations/{id}	Leave conversation	Member
-POST	/conversations/{id}/members	Add member to group	Group Admin
-DELETE	/conversations/{id}/members/{user_id}	Remove member from group	Group Admin
-GET	/conversations/{id}/messages	Get messages (paginated)	Member
-POST	/conversations/{id}/messages	Send a message	Member
-DELETE	/conversations/{id}/messages/{msg_id}	Delete own message	Sender
-PATCH	/conversations/{id}/read	Mark conversation as read	Member
+### Auth
 
-Notifications
-Method	Endpoint	Description	Access
-GET	/notifications	Get all notifications (paginated)	All
-GET	/notifications/unread	Get unread notifications	All
-PATCH	/notifications/{id}/read	Mark notification as read	Owner
-PATCH	/notifications/read-all	Mark all notifications as read	All
-DELETE	/notifications/{id}	Delete a notification	Owner
+| Method | Endpoint        | Description                               | Access        |
+| ------ | --------------- | ----------------------------------------- | ------------- |
+| `POST` | `/auth/login`   | Login and receive access + refresh tokens | Public        |
+| `POST` | `/auth/refresh` | Get new tokens using refresh token        | Public        |
+| `POST` | `/auth/logout`  | Logout and blacklist refresh token        | Authenticated |
 
-Announcements
-Method	Endpoint	Description	Access
-GET	/announcements	Get all announcements (paginated)	All
-POST	/announcements	Create an announcement	Admin
-GET	/announcements/{id}	Get announcement by ID	All
-PATCH	/announcements/{id}	Update announcement	Admin (creator only)
-DELETE	/announcements/{id}	Delete announcement	Admin
+### Users
 
-🔒 Role Permissions Summary
-Feature	Admin	Manager	Member
-Manage Users	✅ Full	✅ View only	❌
-Manage Departments	✅ Full	✅ View only	❌
-Create Tasks	✅	✅	❌
-View All Tasks	✅	✅	❌
-View Own Tasks	✅	✅	✅
-Update Task Status	✅ Any	✅ Any	✅ Own only
-Messaging	✅	✅	✅
-Notifications	✅	✅	✅
-Announcements	✅ Full	✅ View only	✅ View only
+| Method  | Endpoint                 | Description                           | Access         |
+| ------- | ------------------------ | ------------------------------------- | -------------- |
+| `GET`   | `/users`                 | Get all users (paginated, filterable) | Admin, Manager |
+| `POST`  | `/users/create`          | Create a new user                     | Admin          |
+| `GET`   | `/users/me`              | Get current user profile              | All            |
+| `POST`  | `/users/change-password` | Change own password                   | All            |
+| `GET`   | `/users/{id}`            | Get user by ID                        | Admin, Manager |
+| `PATCH` | `/users/{id}`            | Update user details                   | Admin, Manager |
+| `POST`  | `/users/{id}`            | Soft delete a user                    | Admin          |
 
-🌍 Environment Variables
-Variable	Description	Example
-DATABASE_USER	PostgreSQL username	corehub
-DATABASE_PASSWORD	PostgreSQL password	corehub
-DATABASE_NAME	PostgreSQL database name	corehub_db
-REDIS_URL	Upstash Redis connection URL	rediss://...
-ACCESS_SECRET_KEY	JWT access token signing secret	your_secret
-ACCESS_MINUTES_EXPIRES	Access token lifetime in minutes	30
-REFRESH_SECRET_KEY	JWT refresh token signing secret	your_secret
-REFRESH_DAYS_EXPIRES	Refresh token lifetime in days	7
-ALGORITHM	JWT signing algorithm	HS256
-AUTO_CREATE_TABLES	Auto create DB tables on startup	true
+### Departments
 
-👨‍💻 Author
-Menard Francisco
+| Method   | Endpoint                             | Description                     | Access         |
+| -------- | ------------------------------------ | ------------------------------- | -------------- |
+| `GET`    | `/departments`                       | Get all departments (paginated) | Admin, Manager |
+| `POST`   | `/departments`                       | Create a department             | Admin          |
+| `GET`    | `/departments/{id}`                  | Get department by ID            | Admin, Manager |
+| `PATCH`  | `/departments/{id}`                  | Update department               | Admin          |
+| `DELETE` | `/departments/{id}`                  | Delete department               | Admin          |
+| `GET`    | `/departments/{id}/users`            | Get users in a department       | Admin, Manager |
+| `PATCH`  | `/departments/{id}/assign/{user_id}` | Assign user to department       | Admin          |
+| `PATCH`  | `/departments/{id}/remove/{user_id}` | Remove user from department     | Admin          |
 
-GitHub: https://github.com/Menarddddd
-LinkedIn: https://www.linkedin.com/in/menard-francisco-b21486353/
-```
+### Tasks
+
+| Method   | Endpoint               | Description                           | Access                        |
+| -------- | ---------------------- | ------------------------------------- | ----------------------------- |
+| `GET`    | `/tasks`               | Get all tasks (paginated, filterable) | Admin, Manager                |
+| `POST`   | `/tasks`               | Create and assign a task              | Admin, Manager                |
+| `GET`    | `/tasks/my`            | Get my tasks (assigned or created)    | All                           |
+| `GET`    | `/tasks/my/{id}`       | Get single task assigned to me        | All                           |
+| `GET`    | `/tasks/{id}`          | Get any task by ID                    | Admin, Manager                |
+| `GET`    | `/tasks/{user_id}/all` | Get all tasks of a specific user      | Admin, Manager                |
+| `PATCH`  | `/tasks/{id}`          | Update task details                   | Admin, Manager (creator only) |
+| `PATCH`  | `/tasks/status/{id}`   | Update task status                    | All                           |
+| `PATCH`  | `/tasks/due-date/{id}` | Update task due date                  | Admin, Manager (creator only) |
+| `DELETE` | `/tasks/my/{id}`       | Delete own task                       | Admin, Manager (creator only) |
+| `DELETE` | `/tasks/{id}`          | Hard delete any task                  | Admin                         |
+
+### Conversations & Messaging
+
+| Method   | Endpoint                                | Description                  | Access      |
+| -------- | --------------------------------------- | ---------------------------- | ----------- |
+| `GET`    | `/conversations`                        | Get inbox with unread counts | All         |
+| `POST`   | `/conversations/dm`                     | Start a DM conversation      | All         |
+| `POST`   | `/conversations/group`                  | Create a group conversation  | All         |
+| `GET`    | `/conversations/{id}`                   | Get conversation details     | Member      |
+| `PATCH`  | `/conversations/{id}`                   | Update group name            | Group Admin |
+| `DELETE` | `/conversations/{id}`                   | Leave conversation           | Member      |
+| `POST`   | `/conversations/{id}/members`           | Add member to group          | Group Admin |
+| `DELETE` | `/conversations/{id}/members/{user_id}` | Remove member from group     | Group Admin |
+| `GET`    | `/conversations/{id}/messages`          | Get messages (paginated)     | Member      |
+| `POST`   | `/conversations/{id}/messages`          | Send a message               | Member      |
+| `DELETE` | `/conversations/{id}/messages/{msg_id}` | Delete own message           | Sender      |
+| `PATCH`  | `/conversations/{id}/read`              | Mark conversation as read    | Member      |
+
+### Notifications
+
+| Method   | Endpoint                   | Description                       | Access |
+| -------- | -------------------------- | --------------------------------- | ------ |
+| `GET`    | `/notifications`           | Get all notifications (paginated) | All    |
+| `GET`    | `/notifications/unread`    | Get unread notifications          | All    |
+| `PATCH`  | `/notifications/{id}/read` | Mark notification as read         | Owner  |
+| `PATCH`  | `/notifications/read-all`  | Mark all notifications as read    | All    |
+| `DELETE` | `/notifications/{id}`      | Delete a notification             | Owner  |
+
+### Announcements
+
+| Method   | Endpoint              | Description                       | Access               |
+| -------- | --------------------- | --------------------------------- | -------------------- |
+| `GET`    | `/announcements`      | Get all announcements (paginated) | All                  |
+| `POST`   | `/announcements`      | Create an announcement            | Admin                |
+| `GET`    | `/announcements/{id}` | Get announcement by ID            | All                  |
+| `PATCH`  | `/announcements/{id}` | Update announcement               | Admin (creator only) |
+| `DELETE` | `/announcements/{id}` | Delete announcement               | Admin                |
+
+---
+
+## 🔒 Role Permissions Summary
+
+| Feature            | Admin   | Manager      | Member       |
+| ------------------ | ------- | ------------ | ------------ |
+| Manage Users       | ✅ Full | ✅ View only | ❌           |
+| Manage Departments | ✅ Full | ✅ View only | ❌           |
+| Create Tasks       | ✅      | ✅           | ❌           |
+| View All Tasks     | ✅      | ✅           | ❌           |
+| View Own Tasks     | ✅      | ✅           | ✅           |
+| Update Task Status | ✅ Any  | ✅ Any       | ✅ Own only  |
+| Messaging          | ✅      | ✅           | ✅           |
+| Notifications      | ✅      | ✅           | ✅           |
+| Announcements      | ✅ Full | ✅ View only | ✅ View only |
+
+---
+
+## 🌍 Environment Variables
+
+| Variable                 | Description                                       | Default              |
+| ------------------------ | ------------------------------------------------- | -------------------- |
+| `DATABASE_USER`          | PostgreSQL username                               | `corehub`            |
+| `DATABASE_PASSWORD`      | PostgreSQL password                               | `corehub`            |
+| `DATABASE_NAME`          | PostgreSQL database name                          | `corehub_db`         |
+| `REDIS_URL`              | Redis URL (leave empty to use local Docker Redis) | `redis://redis:6379` |
+| `ACCESS_SECRET_KEY`      | JWT access token signing secret                   | required             |
+| `ACCESS_MINUTES_EXPIRES` | Access token lifetime in minutes                  | `30`                 |
+| `REFRESH_SECRET_KEY`     | JWT refresh token signing secret                  | required             |
+| `REFRESH_DAYS_EXPIRES`   | Refresh token lifetime in days                    | `7`                  |
+| `ALGORITHM`              | JWT signing algorithm                             | `HS256`              |
+| `AUTO_CREATE_TABLES`     | Auto create DB tables on startup                  | `true`               |
+
+---
+
+## 👨‍💻 Author
+
+**Menard Francisco**
+
+- GitHub: [github.com/Menarddddd](https://github.com/Menarddddd)
+- LinkedIn: [linkedin.com/in/menard-francisco-b21486353](https://www.linkedin.com/in/menard-francisco-b21486353/)
