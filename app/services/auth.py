@@ -35,7 +35,7 @@ class AuthService:
             user_agent=user_agent,
         )
 
-        # await self.refresh_repo.save(db_token)  uncomment after development
+        await self.refresh_repo.save(db_token)
 
         return {
             "access_token": access_token,
