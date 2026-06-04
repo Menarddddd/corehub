@@ -32,7 +32,7 @@ You can test the live API using these pre-created accounts:
 | Manager | demo_manager | demo_manager |
 | Member  | demo_member  | demo_member  |
 
-You can message me to get a demo for admin account
+You can message me to get a demo admin account.
 
 **How to test:**
 
@@ -42,6 +42,8 @@ You can message me to get a demo for admin account
 4. Click the **Authorize** button (top right of Swagger)
 5. Paste the token and click **Authorize**
 6. Now you can test all endpoints
+
+---
 
 ## ⚙️ Tech Stack
 
@@ -178,10 +180,25 @@ CoreHub has a full messaging system similar to how **Messenger** or **Slack** wo
 ### 📢 Announcement System
 
 - Admins can post company-wide announcements
-- Announcements support **priority levels** and **status** (active, archived, etc.)
+- Announcements support **priority levels** and expiration dates
 - All authenticated users can view announcements
 - Only the announcement creator (Admin) can edit or delete their announcements
 - Supports filtering by `user_id`, `status`, and `priority`
+
+---
+
+### 📊 Dashboard
+
+A single endpoint that returns everything the user needs in one API call:
+
+- **User profile** — current user's information
+- **Task summary** — counts broken down by status (pending, in progress, completed, cancelled)
+- **Unread notifications** — total count of unread notifications
+- **Unread messages** — total count of unread messages across all conversations
+- **Recent announcements** — latest active company announcements
+
+All data is fetched **concurrently** using `asyncio.gather` for maximum performance.
+Instead of making 4 separate API calls, the frontend only needs one.
 
 ---
 
@@ -237,27 +254,6 @@ This separation means each layer can be changed independently without breaking o
 
 ---
 
-## 📁 Project Structure
-
-corehub/
-app/
-core/ # Database, Redis, Security, Settings
-dependencies/ # FastAPI dependency functions
-models/ # SQLAlchemy ORM models
-repositories/ # Database query logic
-routers/ # API route definitions
-schemas/ # Pydantic request/response schemas
-services/ # Business logic
-utils/ # Helper functions (cursor, hashing, etc.)
-.env.example
-docker-compose.yml
-Dockerfile
-pyproject.toml
-
-text
-
----
-
 ## 🛠️ Getting Started
 
 ### Requirements
@@ -283,9 +279,10 @@ DATABASE_USER=corehub
 DATABASE_PASSWORD=corehub
 DATABASE_NAME=corehub_db
 
-Leave empty to use the local Redis container (no signup needed)
-Or paste your Upstash URL here for cloud Redis
-REDIS_URL=
+REDIS_URL is already set to use the local Docker Redis container.
+Do NOT change this unless you want to use a cloud Redis service.
+If you want to use Upstash instead, replace the value below with your Upstash URL.
+REDIS_URL=redis://redis:6379
 
 ACCESS_SECRET_KEY=your_access_secret_key
 ACCESS_MINUTES_EXPIRES=30
@@ -338,6 +335,12 @@ text
 | `POST` | `/auth/login`   | Login and receive access + refresh tokens | Public        |
 | `POST` | `/auth/refresh` | Get new tokens using refresh token        | Public        |
 | `POST` | `/auth/logout`  | Logout and blacklist refresh token        | Authenticated |
+
+### Dashboard
+
+| Method | Endpoint     | Description                                                                     | Access        |
+| ------ | ------------ | ------------------------------------------------------------------------------- | ------------- |
+| `GET`  | `/dashboard` | Get user profile, tasks, notifications, messages, and announcements in one call | Authenticated |
 
 ### Users
 
@@ -432,23 +435,24 @@ text
 | Messaging          | ✅      | ✅           | ✅           |
 | Notifications      | ✅      | ✅           | ✅           |
 | Announcements      | ✅ Full | ✅ View only | ✅ View only |
+| Dashboard          | ✅      | ✅           | ✅           |
 
 ---
 
 ## 🌍 Environment Variables
 
-| Variable                 | Description                                       | Default              |
-| ------------------------ | ------------------------------------------------- | -------------------- |
-| `DATABASE_USER`          | PostgreSQL username                               | `corehub`            |
-| `DATABASE_PASSWORD`      | PostgreSQL password                               | `corehub`            |
-| `DATABASE_NAME`          | PostgreSQL database name                          | `corehub_db`         |
-| `REDIS_URL`              | Redis URL (leave empty to use local Docker Redis) | `redis://redis:6379` |
-| `ACCESS_SECRET_KEY`      | JWT access token signing secret                   | required             |
-| `ACCESS_MINUTES_EXPIRES` | Access token lifetime in minutes                  | `30`                 |
-| `REFRESH_SECRET_KEY`     | JWT refresh token signing secret                  | required             |
-| `REFRESH_DAYS_EXPIRES`   | Refresh token lifetime in days                    | `7`                  |
-| `ALGORITHM`              | JWT signing algorithm                             | `HS256`              |
-| `AUTO_CREATE_TABLES`     | Auto create DB tables on startup                  | `true`               |
+| Variable                 | Description                                                                           | Default              |
+| ------------------------ | ------------------------------------------------------------------------------------- | -------------------- |
+| `DATABASE_USER`          | PostgreSQL username                                                                   | `corehub`            |
+| `DATABASE_PASSWORD`      | PostgreSQL password                                                                   | `corehub`            |
+| `DATABASE_NAME`          | PostgreSQL database name                                                              | `corehub_db`         |
+| `REDIS_URL`              | Redis URL. Default uses local Docker Redis. Replace with Upstash URL for cloud Redis. | `redis://redis:6379` |
+| `ACCESS_SECRET_KEY`      | JWT access token signing secret                                                       | required             |
+| `ACCESS_MINUTES_EXPIRES` | Access token lifetime in minutes                                                      | `30`                 |
+| `REFRESH_SECRET_KEY`     | JWT refresh token signing secret                                                      | required             |
+| `REFRESH_DAYS_EXPIRES`   | Refresh token lifetime in days                                                        | `7`                  |
+| `ALGORITHM`              | JWT signing algorithm                                                                 | `HS256`              |
+| `AUTO_CREATE_TABLES`     | Auto create DB tables on startup                                                      | `true`               |
 
 ---
 
