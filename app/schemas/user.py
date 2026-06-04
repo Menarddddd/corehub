@@ -39,6 +39,7 @@ class UserResponse(UserBase):
 class UserUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    department_id: UUID | None = None
     first_name: str | None = Field(default=None, min_length=2, max_length=100)
     last_name: str | None = Field(default=None, min_length=2, max_length=100)
     username: str | None = Field(default=None, min_length=7, max_length=100)

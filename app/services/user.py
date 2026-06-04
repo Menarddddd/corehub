@@ -114,6 +114,7 @@ class UserService:
         user_data = clean_user_info(form_data.model_dump())
 
         new_user = User(
+            department_id=form_data.department_id,
             first_name=user_data["first_name"],
             last_name=user_data["last_name"],
             username=user_data["username"],
