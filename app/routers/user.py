@@ -88,12 +88,11 @@ async def change_password(
 async def get_user(
     user_id: UUID,
     service: Annotated[UserService, Depends(get_user_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    current_user: Annotated[User, Depends(get_current_user)],
 ):
     """
     Retrieve a single user by their ID.
     Raises 404 if the user does not exist.
-    Restricted to ADMIN and MANAGER roles only.
     """
     return await service.get_user_service(user_id)
 
