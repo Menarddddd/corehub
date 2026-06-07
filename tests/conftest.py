@@ -1,3 +1,5 @@
+from datetime import date
+
 import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock
@@ -10,7 +12,9 @@ from app.core.redis import get_redis
 from app.core.security import hash_password
 from app.main import create_app
 from app.models.departments import Department
+from app.models.tasks import Task
 from app.models.users import User
+from app.schemas.enum import TaskPriority, TaskStatus
 
 
 TEST_DB_URL = "postgresql+asyncpg://postgres:corehub@localhost:5432/corehub_test"
@@ -181,3 +185,20 @@ async def department(db_session: AsyncSession):
     await db_session.commit()
     await db_session.refresh(department)
     return department
+
+
+@pytest_asyncio.fixture
+async def task(db_session: AsyncSession, manager_user: User, employee_user: User):
+    task = Task(
+        assigned_to_id=employee_user.id,
+        created_by_id=manager_user.id,
+        title="title",
+        description="test",
+        status=TaskStatus.PENDING.value,
+        priority=TaskPriority.LOW.value,
+        due_date=date(2026, 10, 20),
+    )
+    db_session.add(task)
+    await db_session.commit()
+    await db_session.refresh(task)
+    return task
