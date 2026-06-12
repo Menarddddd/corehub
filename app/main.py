@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from app.core.exceptions import register_exception_handlers
 from app.core.setup import lifespan
-from app.routers import api_router
+from app.api.v1 import api_router
 
 
 def create_app() -> FastAPI:

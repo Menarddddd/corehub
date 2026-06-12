@@ -1,13 +1,13 @@
 from fastapi import APIRouter
 
-from app.routers.auth import router as auth_router
-from app.routers.dashboard import router as dashboard_router
-from app.routers.user import router as user_router
-from app.routers.department import router as department_router
-from app.routers.task import router as task_router
-from app.routers.announcement import router as announcement_router
-from app.routers.notification import router as notification_router
-from app.routers.conversation import router as conversation_router
+from app.api.v1.auth import router as auth_router
+from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.user import router as user_router
+from app.api.v1.department import router as department_router
+from app.api.v1.task import router as task_router
+from app.api.v1.announcement import router as announcement_router
+from app.api.v1.notification import router as notification_router
+from app.api.v1.conversation import router as conversation_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
