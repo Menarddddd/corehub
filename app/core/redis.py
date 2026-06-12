@@ -1,5 +1,7 @@
 import json
+from typing import Annotated
 
+from fastapi import Depends
 import redis.asyncio as aioredis
 from app.core.settings import settings
 
@@ -58,3 +60,6 @@ async def delete_cache(key: str) -> None:
     """Delete a key from Redis"""
     redis = await get_redis()
     await redis.delete(key)
+
+
+ARedis = Annotated[aioredis.Redis, Depends(get_redis)]

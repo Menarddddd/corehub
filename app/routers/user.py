@@ -5,9 +5,12 @@ from fastapi import Depends, Query, status
 from fastapi.routing import APIRouter
 
 from app.core.redis import get_redis
-from app.core.security import get_current_user
-from app.dependencies.user import get_user_service, required_roles
-from app.models.users import User
+from app.dependencies.user import (
+    AdminOnly,
+    AdminOrManager,
+    AnyAuthenticated,
+    UserServiceDep,
+)
 from app.schemas.enum import Role
 from app.schemas.user import (
     UserCreate,
@@ -16,15 +19,14 @@ from app.schemas.user import (
     UserUpdate,
     ChangePassword,
 )
-from app.services.user import UserService
 
 router = APIRouter()
 
 
 @router.get("", response_model=UserPageResponse, status_code=status.HTTP_200_OK)
 async def get_users(
-    service: Annotated[UserService, Depends(get_user_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    service: UserServiceDep,
+    current_user: AdminOrManager,
     department_id: UUID | None = None,
     role: Role | None = None,
     limit: Annotated[int, Query(ge=1, lt=50)] = 10,
@@ -45,8 +47,8 @@ async def get_users(
 )
 async def create_user(
     form_data: UserCreate,
-    service: Annotated[UserService, Depends(get_user_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    service: UserServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Create a new user account.
@@ -58,8 +60,8 @@ async def create_user(
 
 @router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK)
 async def get_profile(
+    current_user: AnyAuthenticated,
     redis: Annotated[aioredis.Redis, Depends(get_redis)],
-    current_user: Annotated[User, Depends(get_current_user)],
 ):
     """
     Retrieve the profile of the currently authenticated user.
@@ -73,8 +75,8 @@ async def get_profile(
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
 async def change_password(
     form_data: ChangePassword,
-    service: Annotated[UserService, Depends(get_user_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: UserServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Change the password of the currently authenticated user.
@@ -87,8 +89,7 @@ async def change_password(
 @router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
 async def get_user(
     user_id: UUID,
-    service: Annotated[UserService, Depends(get_user_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: UserServiceDep,
 ):
     """
     Retrieve a single user by their ID.
@@ -101,8 +102,8 @@ async def get_user(
 async def update_user(
     user_id: UUID,
     form_data: UserUpdate,
-    service: Annotated[UserService, Depends(get_user_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    service: UserServiceDep,
+    current_user: AdminOrManager,
 ):
     """
     Update the details of a specific user.
@@ -117,8 +118,8 @@ async def update_user(
 @router.post("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: UUID,
-    service: Annotated[UserService, Depends(get_user_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    service: UserServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Soft delete a user by setting their deleted_at timestamp.

@@ -1,21 +1,24 @@
-import redis.asyncio as aioredis
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
-from app.core.redis import get_redis
+from app.core.database import AsyncDB
+from app.core.redis import ARedis
+from app.core.security import GetCurrentUser
 from app.repositories.department import DepartmentRepository
 from app.repositories.user import UserRepository
 from app.services.department import DepartmentService
 
 
 def get_department_service(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+    db: AsyncDB,
+    redis: ARedis,
+    current_user: GetCurrentUser,
 ) -> DepartmentService:
     """Wire DepartmentRepository and UserRepository into DepartmentService."""
     repo = DepartmentRepository(db)
     user_repo = UserRepository(db)
     return DepartmentService(repo, user_repo, redis)
+
+
+DepartmentServiceDep = Annotated[DepartmentService, Depends(get_department_service)]

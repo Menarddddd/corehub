@@ -1,11 +1,10 @@
 from typing import Annotated
 from uuid import UUID
-from fastapi import Depends, Query, status
+from fastapi import Query, status
 from fastapi.routing import APIRouter
 
-from app.dependencies.department import get_department_service
-from app.dependencies.user import required_roles
-from app.models.users import User
+from app.dependencies.department import DepartmentServiceDep
+from app.dependencies.user import AdminOnly, AdminOrManager
 from app.schemas.department import (
     DepartmentCreate,
     DepartmentPageResponse,
@@ -13,19 +12,17 @@ from app.schemas.department import (
     DepartmentUpdate,
     DepartmentWithUserPageResponse,
 )
-from app.schemas.enum import Role
-from app.services.department import DepartmentService
 
 router = APIRouter()
 
 
 @router.get("", response_model=DepartmentPageResponse, status_code=status.HTTP_200_OK)
 async def get_departments(
-    service: Annotated[DepartmentService, Depends(get_department_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    service: DepartmentServiceDep,
+    current_user: AdminOrManager,
     limit: Annotated[int, Query(ge=1, lt=50)] = 10,
     cursor: Annotated[str | None, Query()] = None,
-    name: Annotated[str | None, Query()] = None,  # Optional name filter
+    name: Annotated[str | None, Query()] = None,
 ):
     """
     Retrieve a paginated list of all departments.
@@ -38,8 +35,8 @@ async def get_departments(
 @router.post("", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED)
 async def create_department(
     form_data: DepartmentCreate,
-    service: Annotated[DepartmentService, Depends(get_department_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    service: DepartmentServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Create a new department.
@@ -56,8 +53,8 @@ async def create_department(
 )
 async def get_department_users(
     department_id: UUID,
-    service: Annotated[DepartmentService, Depends(get_department_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    service: DepartmentServiceDep,
+    current_user: AdminOrManager,
     limit: Annotated[int, Query(ge=1, lt=50)] = 10,
     cursor: Annotated[str | None, Query()] = None,
 ):
@@ -77,8 +74,8 @@ async def get_department_users(
 )
 async def get_department(
     department_id: UUID,
-    service: Annotated[DepartmentService, Depends(get_department_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    service: DepartmentServiceDep,
+    current_user: AdminOrManager,
 ):
     """
     Retrieve a single department by its ID.
@@ -95,8 +92,8 @@ async def get_department(
 async def update_department(
     department_id: UUID,
     form_data: DepartmentUpdate,
-    service: Annotated[DepartmentService, Depends(get_department_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    service: DepartmentServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Update the details of an existing department.
@@ -110,8 +107,8 @@ async def update_department(
 @router.delete("/{department_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_department(
     department_id: UUID,
-    service: Annotated[DepartmentService, Depends(get_department_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    service: DepartmentServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Delete a department by its ID.
@@ -130,8 +127,8 @@ async def delete_department(
 async def assign_user_to_department(
     department_id: UUID,
     user_id: UUID,
-    service: Annotated[DepartmentService, Depends(get_department_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    service: DepartmentServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Assign a user to a specific department.
@@ -148,8 +145,8 @@ async def assign_user_to_department(
 async def remove_user_from_department(
     department_id: UUID,
     user_id: UUID,
-    service: Annotated[DepartmentService, Depends(get_department_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    service: DepartmentServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Remove a user from a specific department.

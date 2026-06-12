@@ -1,24 +1,19 @@
 from typing import Annotated
-from fastapi import Depends, Query, status
+from fastapi import Query, status
 from fastapi.routing import APIRouter
 
-from app.core.security import get_current_user
-from app.dependencies.notification import (
-    check_notification_owner,
-    get_notification_service,
-)
-from app.models.notifications import Notification
-from app.models.users import User
+from app.dependencies.notification import CheckNotificationOwner, NotificationServiceDep
+
+from app.dependencies.user import AnyAuthenticated
 from app.schemas.notification import NotificationPageResponse, NotificationResponse
-from app.services.notification import NotificationService
 
 router = APIRouter()
 
 
 @router.get("", response_model=NotificationPageResponse, status_code=status.HTTP_200_OK)
 async def get_notifications(
-    service: Annotated[NotificationService, Depends(get_notification_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: NotificationServiceDep,
+    current_user: AnyAuthenticated,
     limit: Annotated[int, Query(ge=1, lt=50)] = 10,
     cursor: Annotated[str | None, Query()] = None,
 ):
@@ -35,8 +30,8 @@ async def get_notifications(
     status_code=status.HTTP_200_OK,
 )
 async def get_unread_notifications(
-    service: Annotated[NotificationService, Depends(get_notification_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: NotificationServiceDep,
+    current_user: AnyAuthenticated,
     limit: Annotated[int, Query(ge=1, lt=50)] = 10,
     cursor: Annotated[str | None, Query()] = None,
 ):
@@ -55,9 +50,8 @@ async def get_unread_notifications(
     status_code=status.HTTP_200_OK,
 )
 async def mark_as_read(
-    notification: Annotated[Notification, Depends(check_notification_owner)],
-    service: Annotated[NotificationService, Depends(get_notification_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    notification: CheckNotificationOwner,
+    service: NotificationServiceDep,
 ):
     """
     Mark a single notification as read.
@@ -72,8 +66,8 @@ async def mark_as_read(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def mark_all_as_read(
-    service: Annotated[NotificationService, Depends(get_notification_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: NotificationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Mark all notifications as read for the current user.
@@ -87,9 +81,8 @@ async def mark_all_as_read(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_notification(
-    notification: Annotated[Notification, Depends(check_notification_owner)],
-    service: Annotated[NotificationService, Depends(get_notification_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    notification: CheckNotificationOwner,
+    service: NotificationServiceDep,
 ):
     """
     Delete a single notification.

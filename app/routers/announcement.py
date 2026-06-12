@@ -1,32 +1,27 @@
 from typing import Annotated
 from uuid import UUID
-from fastapi import Depends, Query, status
+from fastapi import Query, status
 from fastapi.routing import APIRouter
 
-from app.core.security import get_current_user
 from app.dependencies.announcement import (
-    check_announcement_owner,
-    get_announcement_service,
+    AnnouncementServiceDep,
+    CheckAnnouncementOwner,
 )
-from app.dependencies.user import required_roles
-from app.models.announcements import Announcement
-from app.models.users import User
+from app.dependencies.user import AdminOnly
 from app.schemas.announcement import (
     AnnouncementCreate,
     AnnouncementPageResponse,
     AnnouncementResponse,
     AnnouncementUpdate,
 )
-from app.schemas.enum import AnnouncementPriority, AnnouncementStatus, Role
-from app.services.announcement import AnnouncementService
+from app.schemas.enum import AnnouncementPriority, AnnouncementStatus
 
 router = APIRouter()
 
 
 @router.get("", response_model=AnnouncementPageResponse, status_code=status.HTTP_200_OK)
 async def get_announcements(
-    service: Annotated[AnnouncementService, Depends(get_announcement_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: AnnouncementServiceDep,
     user_id: UUID | None = None,
     status: AnnouncementStatus | None = None,
     priority: AnnouncementPriority | None = None,
@@ -53,8 +48,8 @@ async def get_announcements(
 )
 async def create_announcement(
     form_data: AnnouncementCreate,
-    service: Annotated[AnnouncementService, Depends(get_announcement_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    service: AnnouncementServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Create a new announcement.
@@ -71,8 +66,7 @@ async def create_announcement(
 )
 async def get_announcement(
     announcement_id: UUID,
-    service: Annotated[AnnouncementService, Depends(get_announcement_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: AnnouncementServiceDep,
 ):
     """
     Retrieve a single announcement by its ID.
@@ -89,9 +83,9 @@ async def get_announcement(
 )
 async def update_announcement(
     form_data: AnnouncementUpdate,
-    announcement: Annotated[Announcement, Depends(check_announcement_owner)],
-    service: Annotated[AnnouncementService, Depends(get_announcement_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    announcement: CheckAnnouncementOwner,
+    service: AnnouncementServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Update the details of an existing announcement.
@@ -106,8 +100,8 @@ async def update_announcement(
 @router.delete("/{announcement_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_announcement(
     announcement_id: UUID,
-    service: Annotated[AnnouncementService, Depends(get_announcement_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    service: AnnouncementServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Delete an announcement by its ID.

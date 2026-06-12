@@ -1,15 +1,12 @@
-import redis.asyncio as aioredis
 from typing import Annotated
 from uuid import UUID
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.core.database import AsyncDB
 from app.core.exceptions import FieldNotFoundException, ForbiddenException
-from app.core.redis import get_redis
-from app.core.security import get_current_user
+from app.core.redis import ARedis
+from app.core.security import GetCurrentUser
 from app.models.tasks import Task
-from app.models.users import User
 from app.repositories.notification import NotificationRepository
 from app.repositories.task import TaskRepository
 from app.repositories.user import UserRepository
@@ -17,8 +14,9 @@ from app.services.task import TaskService
 
 
 def get_tasks_service(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    redis: Annotated[aioredis.Redis, Depends(get_redis)],
+    db: AsyncDB,
+    redis: ARedis,
+    current_user: GetCurrentUser,
 ) -> TaskService:
     repo = TaskRepository(db)
     user_repo = UserRepository(db)
@@ -28,8 +26,8 @@ def get_tasks_service(
 
 async def check_task_owner(
     task_id: UUID,
-    current_user: Annotated[User, Depends(get_current_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: GetCurrentUser,
+    db: AsyncDB,
 ) -> Task:
     """
     Dependency that verifies the current user is the creator of the task.
@@ -46,3 +44,7 @@ async def check_task_owner(
         raise ForbiddenException("You cannot modify or update this task!")
 
     return task
+
+
+TaskServiceDep = Annotated[TaskService, Depends(get_tasks_service)]
+CheckTaskOwner = Annotated[Task, Depends(check_task_owner)]

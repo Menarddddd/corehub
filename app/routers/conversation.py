@@ -1,11 +1,11 @@
 from typing import Annotated
 from uuid import UUID
-from fastapi import Depends, Query, status
+from fastapi import Query, status
 from fastapi.routing import APIRouter
 
-from app.core.security import get_current_user
-from app.dependencies.conversation import get_conversation_service
-from app.models.users import User
+from app.dependencies.conversation import ConversationServiceDep
+
+from app.dependencies.user import AnyAuthenticated
 from app.schemas.conversation import (
     ConversationInboxResponse,
     ConversationResponse,
@@ -17,7 +17,6 @@ from app.schemas.conversation import (
     MessagePageResponse,
     SendMessageRequest,
 )
-from app.services.conversation import ConversationService
 
 router = APIRouter()
 
@@ -29,8 +28,8 @@ router = APIRouter()
     status_code=status.HTTP_200_OK,
 )
 async def get_inbox(
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
     limit: Annotated[int, Query(ge=1, lt=50)] = 10,
     cursor: Annotated[str | None, Query()] = None,
 ):
@@ -52,8 +51,8 @@ async def get_inbox(
 )
 async def create_dm(
     form_data: CreateDMRequest,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Create a direct message conversation with another user.
@@ -72,8 +71,8 @@ async def create_dm(
 )
 async def create_group(
     form_data: CreateGroupRequest,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Create a group conversation with multiple users.
@@ -92,8 +91,8 @@ async def create_group(
 )
 async def get_conversation(
     conversation_id: UUID,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Retrieve details of a specific conversation.
@@ -112,8 +111,8 @@ async def get_conversation(
 async def update_group(
     conversation_id: UUID,
     form_data: UpdateGroupRequest,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Update a group conversation name.
@@ -131,8 +130,8 @@ async def update_group(
 )
 async def leave_conversation(
     conversation_id: UUID,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Leave a conversation.
@@ -153,8 +152,8 @@ async def leave_conversation(
 async def add_member(
     conversation_id: UUID,
     form_data: AddMemberRequest,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Add a new member to a group conversation.
@@ -175,8 +174,8 @@ async def add_member(
 async def remove_member(
     conversation_id: UUID,
     user_id: UUID,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Remove a member from a group conversation.
@@ -196,8 +195,8 @@ async def remove_member(
 )
 async def get_messages(
     conversation_id: UUID,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
     limit: Annotated[int, Query(ge=1, lt=50)] = 20,
     cursor: Annotated[str | None, Query()] = None,
 ):
@@ -220,8 +219,8 @@ async def get_messages(
 async def send_message(
     conversation_id: UUID,
     form_data: SendMessageRequest,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Send a message to a conversation.
@@ -240,8 +239,8 @@ async def send_message(
 async def delete_message(
     conversation_id: UUID,
     message_id: UUID,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Delete a specific message from a conversation.
@@ -258,8 +257,8 @@ async def delete_message(
 )
 async def mark_conversation_as_read(
     conversation_id: UUID,
-    service: Annotated[ConversationService, Depends(get_conversation_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: ConversationServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Mark all messages in a conversation as read.

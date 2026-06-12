@@ -1,14 +1,11 @@
 from typing import Annotated
 from uuid import UUID
-from fastapi import Depends, Query, status
+from fastapi import Query, status
 from fastapi.routing import APIRouter
 
-from app.core.security import get_current_user
-from app.dependencies.task import check_task_owner, get_tasks_service
-from app.dependencies.user import required_roles
-from app.models.tasks import Task
-from app.models.users import User
-from app.schemas.enum import Role, TaskDue, TaskPriority, TaskStatus, TaskView
+from app.dependencies.task import CheckTaskOwner, TaskServiceDep
+from app.dependencies.user import AdminOnly, AdminOrManager, AnyAuthenticated
+from app.schemas.enum import TaskDue, TaskPriority, TaskStatus, TaskView
 from app.schemas.task import (
     TaskCreate,
     TaskDueDateUpdate,
@@ -17,15 +14,14 @@ from app.schemas.task import (
     TaskStatusChange,
     TaskUpdate,
 )
-from app.services.task import TaskService
 
 router = APIRouter()
 
 
 @router.get("", response_model=TaskPageResponse, status_code=status.HTTP_200_OK)
 async def get_tasks(
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    service: TaskServiceDep,
+    current_user: AdminOrManager,
     status: Annotated[TaskStatus | None, Query()] = None,
     priority: Annotated[TaskPriority | None, Query()] = None,
     due: Annotated[TaskDue | None, Query()] = None,
@@ -48,8 +44,8 @@ async def get_tasks(
 
 @router.get("/my", response_model=TaskPageResponse, status_code=status.HTTP_200_OK)
 async def get_my_tasks(
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: TaskServiceDep,
+    current_user: AnyAuthenticated,
     task_view: Annotated[TaskView | None, Query()] = None,
     status: Annotated[TaskStatus | None, Query()] = None,
     priority: Annotated[TaskPriority | None, Query()] = None,
@@ -80,8 +76,8 @@ async def get_my_tasks(
 @router.post("", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(
     form_data: TaskCreate,
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    service: TaskServiceDep,
+    current_user: AdminOrManager,
 ):
     """
     Create and assign a new task to a user.
@@ -100,8 +96,8 @@ async def create_task(
 )
 async def get_my_task(
     task_id: UUID,
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: TaskServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Retrieve a single task that is assigned to the current user.
@@ -118,8 +114,8 @@ async def get_my_task(
 )
 async def get_task(
     task_id: UUID,
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    service: TaskServiceDep,
+    current_user: AdminOrManager,
 ):
     """
     Retrieve a single task by its ID.
@@ -133,8 +129,8 @@ async def get_task(
 )
 async def get_user_tasks(
     user_id: UUID,
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    service: TaskServiceDep,
+    current_user: AdminOrManager,
     task_view: Annotated[TaskView | None, Query()] = None,
     status: Annotated[TaskStatus | None, Query()] = None,
     priority: Annotated[TaskPriority | None, Query()] = None,
@@ -166,9 +162,9 @@ async def get_user_tasks(
 )
 async def update_task_due_date(
     form_data: TaskDueDateUpdate,
-    task: Annotated[Task, Depends(check_task_owner)],
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    task: CheckTaskOwner,
+    service: TaskServiceDep,
+    current_user: AdminOrManager,
 ):
     """
     Update the due date of a specific task.
@@ -187,8 +183,8 @@ async def update_task_due_date(
 async def update_status_task(
     task_id: UUID,
     form_data: TaskStatusChange,
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: TaskServiceDep,
+    current_user: AnyAuthenticated,
 ):
     """
     Update the status of a specific task.
@@ -206,9 +202,9 @@ async def update_status_task(
 )
 async def update_task(
     form_data: TaskUpdate,
-    task: Annotated[Task, Depends(check_task_owner)],
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN, Role.MANAGER))],
+    service: TaskServiceDep,
+    task: CheckTaskOwner,
+    current_user: AdminOrManager,
 ):
     """
     Update the details of a specific task (title, description, priority, etc).
@@ -220,9 +216,8 @@ async def update_task(
 
 @router.delete("/my/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_task(
-    task: Annotated[Task, Depends(check_task_owner)],
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    service: TaskServiceDep,
+    task: CheckTaskOwner,
 ):
     """
     Delete a task created by the current user.
@@ -236,8 +231,8 @@ async def delete_my_task(
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(
     task_id: UUID,
-    service: Annotated[TaskService, Depends(get_tasks_service)],
-    current_user: Annotated[User, Depends(required_roles(Role.ADMIN))],
+    service: TaskServiceDep,
+    current_user: AdminOnly,
 ):
     """
     Hard delete any task by its ID regardless of ownership.

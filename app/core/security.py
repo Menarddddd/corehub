@@ -12,6 +12,7 @@ from pwdlib import PasswordHash
 
 from app.core.database import get_db
 from app.core.settings import settings
+from app.models.users import User
 from app.repositories.user import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -103,3 +104,7 @@ def create_refresh_token() -> str:
     hashed_token = hash_refresh_token(raw_token)  # save to db later
 
     return raw_token
+
+
+# This dependency is only use in getting service dependencies
+GetCurrentUser = Annotated[User, Depends(get_current_user)]
