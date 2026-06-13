@@ -201,5 +201,5 @@ Login with the demo account above
 
 ### Menard Francisco
 
-- [GitHub](github.com/Menarddddd)
-- [LinkedIn](linkedin.com/in/menard-francisco-b21486353)
+- [GitHub](https://github.com/Menarddddd)
+- [LinkedIn](https://linkedin.com/in/menard-francisco-b21486353)
