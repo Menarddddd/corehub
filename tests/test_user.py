@@ -53,23 +53,21 @@ async def test_get_users_as_manager(client: AsyncClient, manager_user: User):
     assert "page_info" in data
 
 
-async def test_get_users_as_employee_forbidden(
-    client: AsyncClient, employee_user: User
-):
-    """Employee cannot view the user list."""
-    headers = await get_auth_headers(client, "employee_test", "employee")
+async def test_get_users_as_member_forbidden(client: AsyncClient, member_user: User):
+    """Member cannot view the user list."""
+    headers = await get_auth_headers(client, "member_test", "membermember")
 
     response = await client.get("/users", headers=headers)
 
     assert response.status_code == 403
 
 
-async def test_get_user_by_id(client: AsyncClient, employee_user: User):
+async def test_get_user_by_id(client: AsyncClient, member_user: User):
     """Can retrieve a specific user by ID."""
-    headers = await get_auth_headers(client, "employee_test", "employee")
+    headers = await get_auth_headers(client, "member_user", "membermember")
 
     response = await client.get(
-        f"/users/{employee_user.id}",
+        f"/users/{member_user.id}",
         headers=headers,
     )
 
@@ -80,11 +78,7 @@ async def test_get_user_by_id(client: AsyncClient, employee_user: User):
     assert "hashed_password" not in data
 
 
-
-
-async def test_change_password_wrong_current(
-    client: AsyncClient, admin_user: User
-):
+async def test_change_password_wrong_current(client: AsyncClient, admin_user: User):
     """Change password fails with wrong current password."""
     headers = await get_auth_headers(client, "admin_test", "adminadmin")
 
@@ -100,9 +94,7 @@ async def test_change_password_wrong_current(
     assert response.status_code == 401
 
 
-async def test_change_password_same_value(
-    client: AsyncClient, admin_user: User
-):
+async def test_change_password_same_value(client: AsyncClient, admin_user: User):
     """Change password fails if new password is same as current."""
     headers = await get_auth_headers(client, "admin_test", "adminadmin")
 
@@ -118,9 +110,7 @@ async def test_change_password_same_value(
     assert response.status_code == 422
 
 
-async def test_change_password_success(
-    client: AsyncClient, admin_user: User
-):
+async def test_change_password_success(client: AsyncClient, admin_user: User):
     """Change password succeeds with correct current password."""
     headers = await get_auth_headers(client, "admin_test", "adminadmin")
 

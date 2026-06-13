@@ -260,7 +260,7 @@ class TaskService:
         """
         Create and assign a new task.
         Prevents self-assignment for all roles.
-        Managers can only assign tasks to employees.
+        Managers can only assign tasks to members.
         Removes broad exception catching to expose real errors during development.
         Notifies assigned user after creating task
         """
@@ -274,7 +274,7 @@ class TaskService:
 
         if assigned_user.department_id != current_user.department_id:
             raise ForbiddenException(
-                "You cannot assign a task to employees outside your department"
+                "You cannot assign a task to members outside your department"
             )
 
         new_task = Task(
@@ -307,18 +307,18 @@ class TaskService:
     ) -> Task:
         """
         Update the status of a task.
-        Employees can only update tasks assigned to them.
+        Members can only update tasks assigned to them.
         Admins and Managers can update status of any task regardless of assignment.
         Raises 404 if task does not exist.
-        Raises 403 if an employee tries to update a task not assigned to them.
+        Raises 403 if an Members tries to update a task not assigned to them.
         """
         task = await self.repo.get_by_id(task_id)
         if not task:
             raise FieldNotFoundException("tasks", str(task_id))
 
         # Admins and Managers can update any task status
-        # Only Employees can update their own assigned tasks
-        if current_user.role == Role.EMPLOYEE.value:
+        # Only Members can update their own assigned tasks
+        if current_user.role == Role.MEMBER.value:
             if task.assigned_to_id != current_user.id:
                 raise ForbiddenException(
                     "You can only update the status of tasks assigned to you"

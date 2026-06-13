@@ -16,7 +16,6 @@ from app.models.tasks import Task
 from app.models.users import User
 from app.schemas.enum import TaskPriority, TaskStatus
 
-
 TEST_DB_URL = "postgresql+asyncpg://postgres:corehub@localhost:5432/corehub_test"
 
 test_engine = create_async_engine(
@@ -26,22 +25,20 @@ test_engine = create_async_engine(
 )
 
 TestAsyncSession = async_sessionmaker(
-    bind=test_engine, 
-    class_=AsyncSession, 
-    expire_on_commit=False
+    bind=test_engine, class_=AsyncSession, expire_on_commit=False
 )
 
 
-@pytest_asyncio.fixture(scope='session', autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_db():
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     yield
-    
+
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    
+
     await test_engine.dispose()
 
 
@@ -62,9 +59,9 @@ async def db_session():
             CASCADE
         """))
         await session.commit()
-        
+
         yield session
-        
+
         await session.close()
 
 
@@ -72,41 +69,41 @@ async def db_session():
 def mock_redis():
     """Mock Redis client for testing."""
     redis = AsyncMock()
-    
+
     # Basic operations
     redis.get.return_value = None
     redis.set.return_value = True
     redis.delete.return_value = 1
-        
+
     async def empty_scan(*args, **kwargs):
         """Empty async generator - yields nothing."""
         return
         yield
-    
+
     redis.scan_iter = empty_scan
-    
+
     return redis
 
 
 @pytest_asyncio.fixture
 async def client(db_session, mock_redis):
     app = create_app()
-    
+
     async def override_get_db():
         yield db_session
-    
+
     async def override_get_redis():
         yield mock_redis
-    
+
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_redis] = override_get_redis
-    
+
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
     ) as ac:
         yield ac
-    
+
     app.dependency_overrides.clear()
 
 
@@ -143,14 +140,14 @@ async def manager_user(db_session):
 
 
 @pytest_asyncio.fixture
-async def employee_user(db_session: AsyncSession):
+async def member_user(db_session: AsyncSession):
     user = User(
-        first_name="Employee",
+        first_name="Member",
         last_name="User",
-        username="employee_test",
-        email="employee@test.com",
-        hashed_password=hash_password("employee"),
-        role="employee",
+        username="member_test",
+        email="member@test.com",
+        hashed_password=hash_password("membermember"),
+        role="member",
     )
     db_session.add(user)
     await db_session.commit()
@@ -171,10 +168,10 @@ async def get_auth_headers(
             "password": password,
         },
     )
-    
+
     assert response.status_code == 200
     token = response.json()["access_token"]
-    
+
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -188,9 +185,9 @@ async def department(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def task(db_session: AsyncSession, manager_user: User, employee_user: User):
+async def task(db_session: AsyncSession, manager_user: User, member_user: User):
     task = Task(
-        assigned_to_id=employee_user.id,
+        assigned_to_id=member_user.id,
         created_by_id=manager_user.id,
         title="title",
         description="test",

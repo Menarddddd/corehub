@@ -81,7 +81,7 @@ async def create_task(
 ):
     """
     Create and assign a new task to a user.
-    Managers can only assign tasks to employees, not other managers or admins.
+    Managers can only assign tasks to members, not other managers or admins.
     Admins can assign to anyone except themselves.
     Self-assignment is not allowed for any role.
     Restricted to ADMIN and MANAGER roles only.
@@ -188,7 +188,7 @@ async def update_status_task(
 ):
     """
     Update the status of a specific task.
-    Employees can only update the status of tasks assigned to them.
+    Members can only update the status of tasks assigned to them.
     Admins and Managers can update status of any task.
     Accessible by all authenticated roles.
     """
