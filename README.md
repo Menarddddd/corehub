@@ -10,9 +10,17 @@ It's designed for companies that need a centralized internal system where:
 
 ## Demo Accounts
 
-You can test the live API using these accounts:
-Manager Account - username: demo_manager password: demo_manager
-Member Account - username: demo_member password: demo_member
+You can test the live API using these accounts
+
+#### Manager Account
+
+- username: demo_manager
+- password: demo_manager
+
+#### Member Account
+
+- username: demo_member
+- password: demo_member
 
 You can message me to get a demo admin account
 
