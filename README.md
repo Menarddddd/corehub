@@ -1,210 +1,143 @@
-# CoreHub API
+# Corehub API
 
-**CoreHub** is a backend REST API for an **internal company portal** — think of it as the
-backend engine for a platform where a company manages its employees, departments, tasks,
-announcements, and internal communications all in one place.
+Corehub is a backend REST API for an internal company portal. It's a backend engine for a platform where a company can manage it's employees, departments, tasks, announcements and internal communication all at once in one place.
 
-Built with **FastAPI** using clean architecture principles, async performance, and
-production-ready patterns.
+It's designed for companies that need a centralized internal system where:
 
----
+- Admins manage users, departments, and company-wide settings
+- Managers oversee their teams, assign tasks, and post announcements
+- Members view their tasks, communicate with teammates, and stay updated with company announcements
 
-## 🧠 What is CoreHub?
+## Demo Accounts
 
-CoreHub is designed for companies that need a centralized internal system where:
+You can test the live API using these accounts:
+Manager Account - username: demo_manager password: demo_manager
+Member Account - username: demo_member password: demo_member
 
-- **Admins** manage users, departments, and company-wide settings
-- **Managers** oversee their teams, assign tasks, and post announcements
-- **Employees (Members)** view their tasks, communicate with teammates, and stay
-  updated with company announcements
+You can message me to get a demo admin account
 
-Think of it like a lightweight internal version of **Slack + Asana + an HR portal**,
-all powered by one clean backend API.
+## How to test
 
----
+- Open the live (API Docs)[https://corehub-amber-acorn-510.fly.dev/docs]
+- Use the Authorize button on the top right corner
+- Use one of the demo account above
+- You can now test the endpoints
 
-## 🔑 Demo Accounts
+## Tech stack
 
-You can test the live API using these pre-created accounts:
+- FastAPI
+- PostgreSQL
+- SQLAlchemy
+- Redis
+- JWT
+- Docker
 
-| Role    | Username     | Password     |
-| ------- | ------------ | ------------ |
-| Manager | demo_manager | demo_manager |
-| Member  | demo_member  | demo_member  |
+## Features
 
-You can message me to get a demo admin account.
+### Authentication System
 
-**How to test:**
+Corehub uses a dual-token JWT authentication system
 
-1. Open the [Live API Docs](https://corehub-amber-acorn-510.fly.dev/docs)
-2. Use `/auth/login` with any account above
-3. Copy the `access_token` from the response
-4. Click the **Authorize** button (top right of Swagger)
-5. Paste the token and click **Authorize**
-6. Now you can test all endpoints
+- Industry standard
+- Stateless authentication
+- Secure
 
----
+How it works:
 
-## ⚙️ Tech Stack
+- Server will issues access token (30 mins) and refresh token (7 days) for a successful login
+- Client can just send the access token to every request
+- Refresh token can be send to /refresh endpoint once the access token is expired, to get new tokens
+- Used refresh token is revoked in db to prevent replay attacks
 
-| Category             | Technology                     |
-| -------------------- | ------------------------------ |
-| **Framework**        | FastAPI (Async)                |
-| **Database**         | PostgreSQL                     |
-| **ORM**              | SQLAlchemy (Async)             |
-| **Caching**          | Redis (Local or Upstash Cloud) |
-| **Authentication**   | JWT (Access + Refresh Tokens)  |
-| **Containerization** | Docker + Docker Compose        |
-| **Package Manager**  | UV                             |
-| **Python**           | 3.12                           |
-
----
-
-## 🚀 Features
-
-### 🔐 Authentication System
-
-CoreHub uses a **dual-token JWT authentication system** — the industry standard for
-secure, stateless authentication.
-
-**How it works:**
-
-- When you log in, the server issues two tokens:
-  - **Access Token** (short-lived, e.g. 30 minutes) — used for every API request
-  - **Refresh Token** (long-lived, e.g. 7 days) — used only to get a new access token
-- When your access token expires, your client sends the refresh token to `/auth/refresh`
-  and gets a **brand new pair of tokens** without requiring the user to log in again
-- This is called **Refresh Token Rotation** — every refresh issues a new refresh token
-  and invalidates the old one, making stolen tokens useless
-- On logout, the refresh token is **blacklisted in Redis** so it can never be reused
-- The `user-agent` header is tracked on login and refresh for basic session awareness
-
-**Why this is better than a single token:**
-A single long-lived token is dangerous. If it gets stolen, the attacker has access
-for days. With dual tokens, even if the access token is stolen, it expires in minutes.
-The refresh token is only sent to one specific endpoint, reducing its exposure.
-
----
-
-### 👥 User Management
+### User Managerment
 
 - Full CRUD for company employees
-- **Soft Delete** — deleted users are never permanently removed from the database.
-  Their records are kept for audit trails, message history, and task ownership.
-  They simply can no longer log in.
-- Role-based access control with three roles:
-  - `admin` — full system access
-  - `manager` — team management, task assignment
-  - `member` — personal tasks, messaging, notifications
+- Soft deletion for account recover, audit and trails
+- RBAC for ADMIN, MANAGER, MEMBER
 
----
-
-### 🏢 Department Management
+### Department Management
 
 - Admins can create, update, and delete departments
 - Assign or remove users from departments
 - View all users within a specific department
 - Department names are unique across the system
-- When a department is deleted, users are not deleted — their `department_id`
-  is simply set to `NULL`
+- When a department is deleted, users are not deleted — their department_id is simply set to NULL
 
----
+### Task Management
 
-### ✅ Task Management
-
-CoreHub has a full task system with granular permission rules:
-
-- **Admins** can assign tasks to anyone (except themselves) and manage all tasks
-- **Managers** can assign tasks to members only (not to other managers or admins)
-- **Members** can view and update the status of tasks assigned to them
+- Admins can assign tasks to anyone (except themselves) and manage all tasks
+- Managers can assign tasks to members only (not to other managers or admins)
+- Members can view and update the status of tasks assigned to them
 - Task creators have exclusive rights to edit or delete their own tasks
-- Tasks support filtering by **status**, **priority**, and **due date range**
-- Members can view tasks **assigned to them** or **created by them** via `task_view`
+- Tasks support filtering by status, priority, and due date range
+- Members can view tasks assigned to them or created by them via task_view
 - Due dates must always be set in the future
 
-**Task Statuses:** `pending`, `in_progress`, `completed`, `cancelled`
+Task Statuses: pending, in_progress, completed, cancelled
+Task Priorities: low, medium, high, critical
 
-**Task Priorities:** `low`, `medium`, `high`, `critical`
+### Messaging System
 
----
+CoreHub has a full messaging system similar to how Messenger or Slack works:
 
-### 💬 Messaging System
-
-CoreHub has a full messaging system similar to how **Messenger** or **Slack** works:
-
-**Direct Messages (DM)**
+Direct Messages (DM)
 
 - Start a private conversation with any other user
-- If a DM already exists between two users, the existing one is returned
-  (no duplicate DMs)
+- If a DM already exists between two users, the existing one is returned (no duplicate DMs)
 - Cannot DM yourself
 - Leaving a DM deletes the entire conversation for both users
 
-**Group Conversations**
+Group Conversations
 
 - Create a group with multiple members
-- The creator is automatically set as **group admin**
+- The creator is automatically set as group admin
 - Group admins can add or remove members
 - Group admins can rename the group
 - Regular members can leave at any time
 - Only the message sender can delete their own message
 
-**Message History**
+Message History
 
-- All messages are paginated using **cursor-based pagination**
+- All messages are paginated using cursor-based pagination
 - Ordered oldest to newest (just like a real chat)
 - Unread count is tracked per conversation per user
 
-**Automatic Notifications**
+### Notification System
 
-- When a message is sent, every other member of the conversation
-  automatically receives a notification
+Notifications are automatically created for:
 
----
+- New messages received in a conversation
+- Task assignments
 
-### 🔔 Notification System
+Users can:
 
-- Notifications are automatically created for:
-  - New messages received in a conversation
-  - Task assignments
-- Users can:
-  - View all notifications (paginated)
-  - View only unread notifications
-  - Mark a single notification as read
-  - Mark all notifications as read at once
-  - Delete individual notifications
-- Notifications are never shown to the sender — only to recipients
+- View all notifications (paginated)
+- View only unread notifications
+- Mark a single notification as read
+- Mark all notifications as read at once
+- Delete individual notifications
 
----
-
-### 📢 Announcement System
+### Announcement System
 
 - Admins can post company-wide announcements
-- Announcements support **priority levels** and expiration dates
+- Announcements support priority levels and expiration dates
 - All authenticated users can view announcements
 - Only the announcement creator (Admin) can edit or delete their announcements
-- Supports filtering by `user_id`, `status`, and `priority`
+- Supports filtering by user_id, status, and priority
 
----
-
-### 📊 Dashboard
+### Dashboard
 
 A single endpoint that returns everything the user needs in one API call:
 
-- **User profile** — current user's information
-- **Task summary** — counts broken down by status (pending, in progress, completed, cancelled)
-- **Unread notifications** — total count of unread notifications
-- **Unread messages** — total count of unread messages across all conversations
-- **Recent announcements** — latest active company announcements
+- User profile — current user's information
+- Task summary — counts broken down by status (pending, in progress, completed, cancelled)
+- Unread notifications — total count of unread notifications
+- Unread messages — total count of unread messages across all conversations
+- Recent announcements — latest active company announcements
 
-All data is fetched **concurrently** using `asyncio.gather` for maximum performance.
-Instead of making 4 separate API calls, the frontend only needs one.
+All data is fetched concurrently using asyncio.gather for maximum performance. Instead of making 4 separate API calls, the frontend only needs one.
 
----
-
-### ⚡ Performance
-
-**Redis Caching**
+### Redis Caching
 
 Read-heavy endpoints are cached in Redis to reduce database load:
 
@@ -212,253 +145,61 @@ Read-heavy endpoints are cached in Redis to reduce database load:
 - Task lists (per user and system-wide)
 - Notification lists
 
-Cache is automatically **invalidated** when data changes (create, update, delete).
-This means users always see fresh data while getting fast responses on repeated reads.
+Cache is automatically invalidated when data changes (create, update, delete)
 
-By default, Docker Compose spins up a **local Redis container** automatically.
-If you prefer cloud Redis, you can point `REDIS_URL` to your
-[Upstash](https://upstash.com) instance instead.
+By default, Docker Compose spins up a local Redis container automatically. If you prefer cloud Redis, you can point REDIS_URL to your Upstash instance instead.
 
-**Cursor-based Pagination**
+Cursor-based Pagination
 
-All list endpoints use cursor-based pagination instead of traditional
-offset pagination.
+All list endpoints use cursor-based pagination instead of traditional offset pagination.
 
-Offset pagination (`LIMIT 10 OFFSET 100`) becomes slower as data grows because
-the database still has to scan all skipped rows. Cursor-based pagination
-uses a pointer to the last seen item, making it **consistently fast** regardless
-of how much data exists. This is the same approach used by Facebook, Twitter,
-and Instagram.
+Fully Async
 
-**Fully Async**
+Every database query, Redis operation, and I/O call is non-blocking async. This means the server can handle many concurrent requests without waiting for each one to finish — critical for real-world performance.
 
-Every database query, Redis operation, and I/O call is **non-blocking async**.
-This means the server can handle many concurrent requests without waiting for
-each one to finish — critical for real-world performance.
+### Architecture
 
----
+Corehub follows a clean layered architecture: API -> Service -> Repository -> Database
 
-### 🏗️ Architecture
+- API or router only handles HTTP concerns (request/response). Talks to services.
+- Service layer handles all business logic and rules. Talks to repositories.
+- Repository layer handles all database queries. Nothing else touches the DB.
 
-CoreHub follows a clean layered architecture:
-Router → Service → Repository → Database
+I used Dependency Injetction(DI) to wires everything together cleanly
 
-text
+## Clone
 
-- **Repository Layer** — handles all database queries. Nothing else touches the DB.
-- **Service Layer** — handles all business logic and rules. Talks to repositories.
-- **Router Layer** — only handles HTTP concerns (request/response). Talks to services.
-- **Dependency Injection** — FastAPI's DI system wires everything together cleanly.
+You need docker here
 
-This separation means each layer can be changed independently without breaking others.
+### Clone the repository
 
----
+git clone https://github.com/Menarddddd/corehub.git cd corehub
 
-## 🛠️ Getting Started
+### Set up environment variables
 
-### Requirements
+Copy the env example to your env file:
 
-- Docker
-- Docker Compose
+- cp .env.example .env
 
-### 1. Clone the repository
+Fill in your env values and is already set to use the local Docker Redis container.
+If you want to use other service like UPSTASH just replace the value with your UPSTASH URL
+Leave the AUTO_CREATE_TABLES=true, you need this on first run
 
-git clone https://github.com/Menarddddd/corehub.git
-cd corehub
+### Run with Docker-Compose
 
-text
+docker-compose up --build
 
-### 2. Set up environment variables
+It will set up PostgreSQL database, Redis, FastAPI app all at once
 
-cp .env.example .env
-
-text
-
-Open `.env` and fill in your values:
-DATABASE_USER=corehub
-DATABASE_PASSWORD=corehub
-DATABASE_NAME=corehub_db
-
-REDIS_URL is already set to use the local Docker Redis container.
-Do NOT change this unless you want to use a cloud Redis service.
-If you want to use Upstash instead, replace the value below with your Upstash URL.
-REDIS_URL=redis://redis:6379
-
-ACCESS_SECRET_KEY=your_access_secret_key
-ACCESS_MINUTES_EXPIRES=30
-
-REFRESH_SECRET_KEY=your_refresh_secret_key
-REFRESH_DAYS_EXPIRES=7
-
-ALGORITHM=HS256
-AUTO_CREATE_TABLES=true
-
-text
-
-### 3. Run with Docker Compose
-
-docker compose up --build
-
-text
-
-This starts:
-
-- PostgreSQL database
-- Redis (local container — no external signup needed)
-- FastAPI application
-
-Database tables are created automatically on first run.
-
-### 4. Open the API docs
+### Open API Docs
 
 http://localhost:8000/docs
 
-text
+Login with the demo account above
 
-### 5. Login with the default admin account
+## Author
 
-Username: adminadmin
-Password: adminadmin
+### Menard Francisco
 
-text
-
-> ⚠️ Change the default admin password immediately after first login.
-
----
-
-## 📡 API Overview
-
-### Auth
-
-| Method | Endpoint        | Description                               | Access        |
-| ------ | --------------- | ----------------------------------------- | ------------- |
-| `POST` | `/auth/login`   | Login and receive access + refresh tokens | Public        |
-| `POST` | `/auth/refresh` | Get new tokens using refresh token        | Public        |
-| `POST` | `/auth/logout`  | Logout and blacklist refresh token        | Authenticated |
-
-### Dashboard
-
-| Method | Endpoint     | Description                                                                     | Access        |
-| ------ | ------------ | ------------------------------------------------------------------------------- | ------------- |
-| `GET`  | `/dashboard` | Get user profile, tasks, notifications, messages, and announcements in one call | Authenticated |
-
-### Users
-
-| Method  | Endpoint                 | Description                           | Access         |
-| ------- | ------------------------ | ------------------------------------- | -------------- |
-| `GET`   | `/users`                 | Get all users (paginated, filterable) | Admin, Manager |
-| `POST`  | `/users/create`          | Create a new user                     | Admin          |
-| `GET`   | `/users/me`              | Get current user profile              | All            |
-| `POST`  | `/users/change-password` | Change own password                   | All            |
-| `GET`   | `/users/{id}`            | Get user by ID                        | Admin, Manager |
-| `PATCH` | `/users/{id}`            | Update user details                   | Admin, Manager |
-| `POST`  | `/users/{id}`            | Soft delete a user                    | Admin          |
-
-### Departments
-
-| Method   | Endpoint                             | Description                     | Access         |
-| -------- | ------------------------------------ | ------------------------------- | -------------- |
-| `GET`    | `/departments`                       | Get all departments (paginated) | Admin, Manager |
-| `POST`   | `/departments`                       | Create a department             | Admin          |
-| `GET`    | `/departments/{id}`                  | Get department by ID            | Admin, Manager |
-| `PATCH`  | `/departments/{id}`                  | Update department               | Admin          |
-| `DELETE` | `/departments/{id}`                  | Delete department               | Admin          |
-| `GET`    | `/departments/{id}/users`            | Get users in a department       | Admin, Manager |
-| `PATCH`  | `/departments/{id}/assign/{user_id}` | Assign user to department       | Admin          |
-| `PATCH`  | `/departments/{id}/remove/{user_id}` | Remove user from department     | Admin          |
-
-### Tasks
-
-| Method   | Endpoint               | Description                           | Access                        |
-| -------- | ---------------------- | ------------------------------------- | ----------------------------- |
-| `GET`    | `/tasks`               | Get all tasks (paginated, filterable) | Admin, Manager                |
-| `POST`   | `/tasks`               | Create and assign a task              | Admin, Manager                |
-| `GET`    | `/tasks/my`            | Get my tasks (assigned or created)    | All                           |
-| `GET`    | `/tasks/my/{id}`       | Get single task assigned to me        | All                           |
-| `GET`    | `/tasks/{id}`          | Get any task by ID                    | Admin, Manager                |
-| `GET`    | `/tasks/{user_id}/all` | Get all tasks of a specific user      | Admin, Manager                |
-| `PATCH`  | `/tasks/{id}`          | Update task details                   | Admin, Manager (creator only) |
-| `PATCH`  | `/tasks/status/{id}`   | Update task status                    | All                           |
-| `PATCH`  | `/tasks/due-date/{id}` | Update task due date                  | Admin, Manager (creator only) |
-| `DELETE` | `/tasks/my/{id}`       | Delete own task                       | Admin, Manager (creator only) |
-| `DELETE` | `/tasks/{id}`          | Hard delete any task                  | Admin                         |
-
-### Conversations & Messaging
-
-| Method   | Endpoint                                | Description                  | Access      |
-| -------- | --------------------------------------- | ---------------------------- | ----------- |
-| `GET`    | `/conversations`                        | Get inbox with unread counts | All         |
-| `POST`   | `/conversations/dm`                     | Start a DM conversation      | All         |
-| `POST`   | `/conversations/group`                  | Create a group conversation  | All         |
-| `GET`    | `/conversations/{id}`                   | Get conversation details     | Member      |
-| `PATCH`  | `/conversations/{id}`                   | Update group name            | Group Admin |
-| `DELETE` | `/conversations/{id}`                   | Leave conversation           | Member      |
-| `POST`   | `/conversations/{id}/members`           | Add member to group          | Group Admin |
-| `DELETE` | `/conversations/{id}/members/{user_id}` | Remove member from group     | Group Admin |
-| `GET`    | `/conversations/{id}/messages`          | Get messages (paginated)     | Member      |
-| `POST`   | `/conversations/{id}/messages`          | Send a message               | Member      |
-| `DELETE` | `/conversations/{id}/messages/{msg_id}` | Delete own message           | Sender      |
-| `PATCH`  | `/conversations/{id}/read`              | Mark conversation as read    | Member      |
-
-### Notifications
-
-| Method   | Endpoint                   | Description                       | Access |
-| -------- | -------------------------- | --------------------------------- | ------ |
-| `GET`    | `/notifications`           | Get all notifications (paginated) | All    |
-| `GET`    | `/notifications/unread`    | Get unread notifications          | All    |
-| `PATCH`  | `/notifications/{id}/read` | Mark notification as read         | Owner  |
-| `PATCH`  | `/notifications/read-all`  | Mark all notifications as read    | All    |
-| `DELETE` | `/notifications/{id}`      | Delete a notification             | Owner  |
-
-### Announcements
-
-| Method   | Endpoint              | Description                       | Access               |
-| -------- | --------------------- | --------------------------------- | -------------------- |
-| `GET`    | `/announcements`      | Get all announcements (paginated) | All                  |
-| `POST`   | `/announcements`      | Create an announcement            | Admin                |
-| `GET`    | `/announcements/{id}` | Get announcement by ID            | All                  |
-| `PATCH`  | `/announcements/{id}` | Update announcement               | Admin (creator only) |
-| `DELETE` | `/announcements/{id}` | Delete announcement               | Admin                |
-
----
-
-## 🔒 Role Permissions Summary
-
-| Feature            | Admin   | Manager      | Member       |
-| ------------------ | ------- | ------------ | ------------ |
-| Manage Users       | ✅ Full | ✅ View only | ❌           |
-| Manage Departments | ✅ Full | ✅ View only | ❌           |
-| Create Tasks       | ✅      | ✅           | ❌           |
-| View All Tasks     | ✅      | ✅           | ❌           |
-| View Own Tasks     | ✅      | ✅           | ✅           |
-| Update Task Status | ✅ Any  | ✅ Any       | ✅ Own only  |
-| Messaging          | ✅      | ✅           | ✅           |
-| Notifications      | ✅      | ✅           | ✅           |
-| Announcements      | ✅ Full | ✅ View only | ✅ View only |
-| Dashboard          | ✅      | ✅           | ✅           |
-
----
-
-## 🌍 Environment Variables
-
-| Variable                 | Description                                                                           | Default              |
-| ------------------------ | ------------------------------------------------------------------------------------- | -------------------- |
-| `DATABASE_USER`          | PostgreSQL username                                                                   | `corehub`            |
-| `DATABASE_PASSWORD`      | PostgreSQL password                                                                   | `corehub`            |
-| `DATABASE_NAME`          | PostgreSQL database name                                                              | `corehub_db`         |
-| `REDIS_URL`              | Redis URL. Default uses local Docker Redis. Replace with Upstash URL for cloud Redis. | `redis://redis:6379` |
-| `ACCESS_SECRET_KEY`      | JWT access token signing secret                                                       | required             |
-| `ACCESS_MINUTES_EXPIRES` | Access token lifetime in minutes                                                      | `30`                 |
-| `REFRESH_SECRET_KEY`     | JWT refresh token signing secret                                                      | required             |
-| `REFRESH_DAYS_EXPIRES`   | Refresh token lifetime in days                                                        | `7`                  |
-| `ALGORITHM`              | JWT signing algorithm                                                                 | `HS256`              |
-| `AUTO_CREATE_TABLES`     | Auto create DB tables on startup                                                      | `true`               |
-
----
-
-## 👨‍💻 Author
-
-**Menard Francisco**
-
-- GitHub: [github.com/Menarddddd](https://github.com/Menarddddd)
-- LinkedIn: [linkedin.com/in/menard-francisco-b21486353](https://www.linkedin.com/in/menard-francisco-b21486353/)
+- (GitHub)[github.com/Menarddddd]
+- (LinkedIn)[linkedin.com/in/menard-francisco-b21486353]
