@@ -18,7 +18,7 @@ You can message me to get a demo admin account
 
 ## How to test
 
-- Open the live (API Docs)[https://corehub-amber-acorn-510.fly.dev/docs]
+- Open the live [API Docs](https://corehub-amber-acorn-510.fly.dev/docs)
 - Use the Authorize button on the top right corner
 - Use one of the demo account above
 - You can now test the endpoints
@@ -201,5 +201,5 @@ Login with the demo account above
 
 ### Menard Francisco
 
-- (GitHub)[github.com/Menarddddd]
-- (LinkedIn)[linkedin.com/in/menard-francisco-b21486353]
+- [GitHub](github.com/Menarddddd)
+- [LinkedIn](linkedin.com/in/menard-francisco-b21486353)
