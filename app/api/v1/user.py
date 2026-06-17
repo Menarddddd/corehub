@@ -1,7 +1,7 @@
 import redis.asyncio as aioredis
 from typing import Annotated
 from uuid import UUID
-from fastapi import Depends, Query, status
+from fastapi import Depends, Query, UploadFile, status
 from fastapi.routing import APIRouter
 
 from app.core.redis import get_redis
@@ -70,6 +70,24 @@ async def get_profile(
     Accessible by all authenticated roles.
     """
     return current_user
+
+
+@router.post("/upload-profile", status_code=status.HTTP_204_NO_CONTENT)
+async def upload_profile(
+    current_user: AnyAuthenticated, file: UploadFile, service: UserServiceDep
+):
+    """
+    Upload a profile picture for any authenticated user
+    """
+    await service.upload_profile_service(current_user, file)
+
+
+@router.delete("/remove-profile", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_profile(current_user: AnyAuthenticated, service: UserServiceDep):
+    """
+    Delete profile picture of authenticated user
+    """
+    await service.remove_profile_service(current_user)
 
 
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,3 +1,7 @@
+from pathlib import Path
+import uuid
+
+from fastapi import UploadFile
 import redis.asyncio as aioredis
 from uuid import UUID
 from datetime import datetime, timezone
@@ -156,6 +160,70 @@ class UserService:
         await self.redis.set(cache_key, response.model_dump_json(), ex=3600)
 
         return UserResponse.model_validate(response)
+
+    async def upload_profile_service(self, user: User, file: UploadFile) -> None:
+        ALLOWED = {".jpeg", ".jpg", ".png"}
+        MAX_SIZE = 5 * 1024 * 1024
+        CHUNK_SIZE = 1024 * 1024
+
+        UPLOAD_DIR = (
+            Path(__file__).resolve().parent.parent.parent / "uploads" / "profiles"
+        )
+
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+        if not file.filename:
+            raise BadRequestException("Upload filename is required")
+
+        if not file.content_type or not file.content_type.startswith("image/"):
+            raise BadRequestException("File must be an image")
+
+        if file.size and file.size > MAX_SIZE:
+            raise BadRequestException("File too large (max 5MB)")
+
+        extension = Path(file.filename).suffix.lower()
+        if extension not in ALLOWED:
+            raise BadRequestException("Image type must be jpeg/jpg/png")
+
+        unique_filename = f"{uuid.uuid4()}{extension}"
+        file_path = UPLOAD_DIR / unique_filename
+
+        total_size = 0
+        with open(file_path, "wb") as f:
+            while True:
+                chunk = await file.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+
+                total_size += len(chunk)
+                if total_size > MAX_SIZE:
+                    raise BadRequestException("File too large (max 5MB)")
+
+                f.write(chunk)
+
+        if user.profile:
+            old_file = UPLOAD_DIR / user.profile
+            if old_file.exists():
+                old_file.unlink()
+
+        user.profile = unique_filename
+        await self.repo.save(user)
+
+    async def remove_profile_service(self, user: User) -> None:
+        UPLOAD_DIR = (
+            Path(__file__).resolve().parent.parent.parent / "uploads" / "profiles"
+        )
+
+        if user.profile is None:
+            raise BadRequestException("User has no profile photo to remove")
+
+        file_path = UPLOAD_DIR / user.profile
+
+        if file_path.exists():
+            file_path.unlink()
+
+        user.profile = None
+        await self.repo.update(user)
 
     async def update_user_service(self, user_id: UUID, form_data: UserUpdate) -> User:
         """
