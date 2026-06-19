@@ -41,6 +41,7 @@ class UserService:
         self,
         department_id: UUID | None,
         role: Role | None,
+        active: Active | None,
         limit: int,
         cursor: str | None,
     ) -> str:
@@ -50,9 +51,10 @@ class UserService:
         """
         dept = str(department_id) if department_id else "all"
         r = role.value if role else "all"
+        a = active.value if active else "all"
         c = cursor if cursor else "none"
 
-        return f"user:dept:{dept}:role:{r}:limit:{limit}:cursor:{c}"
+        return f"user:dept:{dept}:role:{r}:active:{a}:limit:{limit}:cursor:{c}"
 
     async def _invalidate_users_cache(self) -> None:
         "Delete ALL cached user list keys"
@@ -76,6 +78,7 @@ class UserService:
         cache_key = await self._build_users_cache_key(
             department_id=department_id,
             role=role,
+            active=active,
             limit=limit,
             cursor=cursor,
         )
@@ -319,6 +322,9 @@ class UserService:
         if not user:
             raise FieldNotFoundException("users", str(user_id))
 
+        if user.deleted_at:
+            raise BadRequestException(f"User with id '{user_id}' is already deleted")
+
         user.deleted_at = datetime.now(timezone.utc)
         await self.repo.update(user)
         await self._invalidate_users_cache()
@@ -331,6 +337,9 @@ class UserService:
         user = await self.repo.get_by_id(user_id)
         if not user:
             raise FieldNotFoundException("users", str(user_id))
+
+        if user.deleted_at is None:
+            raise BadRequestException(f"User with id '{user_id}' is already active")
 
         user.deleted_at = None
         await self.repo.update(user)
