@@ -16,6 +16,10 @@ async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     service: AuthServiceDep,
 ):
+    """
+    Authentication service for getting access token and refresh token
+    Filters out deleted users
+    """
     return await service.login_service(
         form_data.username,
         form_data.password,
@@ -29,7 +33,10 @@ async def logout(
     service: AuthServiceDep,
     current_user: AnyAuthenticated,
 ):
-    return await service.logout_service(form_data.refresh_token)
+    """
+    Invalidate active refresh token in db
+    """
+    await service.logout_service(form_data.refresh_token)
 
 
 @router.post("/refresh", response_model=Token, status_code=status.HTTP_200_OK)
@@ -38,6 +45,11 @@ async def refresh(
     form_data: RefreshTokenRequest,
     service: AuthServiceDep,
 ):
+    """
+    Accepts refresh token once validated.
+    Generates new access and refresh token
+    Revoke used refresh token
+    """
     return await service.refresh_service(
         form_data.refresh_token,
         request.headers.get("user-agent"),

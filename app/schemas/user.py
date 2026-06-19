@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
@@ -36,6 +37,15 @@ class UserResponse(UserBase):
     id: UUID
 
 
+class UserAdminResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    deleted_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
 class UserUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -61,5 +71,5 @@ class ChangePassword(BaseModel):
 class UserPageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    items: list[UserResponse]
+    items: list[UserAdminResponse]
     page_info: CursorPageInfo

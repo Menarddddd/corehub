@@ -19,13 +19,14 @@ from app.utils.user import clean_user_info
 from app.models.users import User
 from app.repositories.user import UserRepository
 from app.schemas.cursor import CursorPageInfo
-from app.schemas.enum import Role
+from app.schemas.enum import Active, Role
 from app.schemas.user import (
     ChangePassword,
     UserCreate,
     UserPageResponse,
     UserUpdate,
     UserResponse,
+    UserAdminResponse,
 )
 from app.utils.cursor import get_cursor_info
 
@@ -62,6 +63,7 @@ class UserService:
         self,
         department_id: UUID | None,
         role: Role | None,
+        active: Active | None,
         limit: int,
         cursor: str | None,
     ) -> UserPageResponse:
@@ -69,6 +71,7 @@ class UserService:
         Fetch all users with optional filters and cursor-based pagination.
         Builds conditions dynamically based on provided filter arguments.
         Only adds a condition if the filter value is not None.
+        Filters out deleted users
         """
         cache_key = await self._build_users_cache_key(
             department_id=department_id,
@@ -90,11 +93,16 @@ class UserService:
         if role is not None:
             conditions.append(User.role == role.value)
 
+        if active == Active.FALSE:
+            conditions.append(User.deleted_at.is_not(None))
+        if active == Active.TRUE:
+            conditions.append(User.deleted_at.is_(None))
+
         users = await self.repo.get_users(*conditions, limit=limit, cursor=cursor)
         users, has_next, next_cursor = get_cursor_info(users, limit)
 
         response = UserPageResponse(
-            items=[UserResponse.model_validate(user) for user in users],
+            items=[UserAdminResponse.model_validate(user) for user in users],
             page_info=CursorPageInfo(has_next=has_next, next_cursor=next_cursor),
         )
 
@@ -152,7 +160,7 @@ class UserService:
             return UserResponse.model_validate_json(cached_data)
 
         user = await self.repo.get_by_id(user_id)
-        if not user:
+        if not user or user.deleted_at:
             raise FieldNotFoundException("users", str(user_id))
 
         response = UserResponse.model_validate(user)
@@ -160,6 +168,28 @@ class UserService:
         await self.redis.set(cache_key, response.model_dump_json(), ex=3600)
 
         return UserResponse.model_validate(response)
+
+    async def get_user_info_service(self, user_id: UUID) -> UserAdminResponse:
+        """
+        Fetch a single user by their ID.
+        Raises 404 if the user does not exist.
+        Returns user's timestamps.
+        Admin and manager only.
+        """
+        cache_key = f"user:{user_id}info"
+        cached_data = await self.redis.get(cache_key)
+        if cached_data:
+            return UserAdminResponse.model_validate_json(cached_data)
+
+        user = await self.repo.get_by_id(user_id)
+        if not user:
+            raise FieldNotFoundException("users", str(user_id))
+
+        response = UserAdminResponse.model_validate(user)
+
+        await self.redis.set(cache_key, response.model_dump_json(), ex=3600)
+
+        return UserAdminResponse.model_validate(response)
 
     async def upload_profile_service(self, user: User, file: UploadFile) -> None:
         ALLOWED = {".jpeg", ".jpg", ".png"}
@@ -290,5 +320,18 @@ class UserService:
             raise FieldNotFoundException("users", str(user_id))
 
         user.deleted_at = datetime.now(timezone.utc)
+        await self.repo.update(user)
+        await self._invalidate_users_cache()
+
+    async def recover_user_service(self, user_id: UUID) -> None:
+        """
+        Recover soft-deleted user
+        Raises 404 if the user does not exist
+        """
+        user = await self.repo.get_by_id(user_id)
+        if not user:
+            raise FieldNotFoundException("users", str(user_id))
+
+        user.deleted_at = None
         await self.repo.update(user)
         await self._invalidate_users_cache()

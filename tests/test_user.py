@@ -64,7 +64,7 @@ async def test_get_users_as_member_forbidden(client: AsyncClient, member_user: U
 
 async def test_get_user_by_id(client: AsyncClient, member_user: User):
     """Can retrieve a specific user by ID."""
-    headers = await get_auth_headers(client, "member_user", "membermember")
+    headers = await get_auth_headers(client, "member_test", "membermember")
 
     response = await client.get(
         f"/users/{member_user.id}",

@@ -11,13 +11,14 @@ from app.dependencies.user import (
     AnyAuthenticated,
     UserServiceDep,
 )
-from app.schemas.enum import Role
+from app.schemas.enum import Active, Role
 from app.schemas.user import (
     UserCreate,
     UserPageResponse,
     UserResponse,
     UserUpdate,
     ChangePassword,
+    UserAdminResponse,
 )
 
 router = APIRouter()
@@ -29,16 +30,19 @@ async def get_users(
     current_user: AdminOrManager,
     department_id: UUID | None = None,
     role: Role | None = None,
+    active: Active | None = None,
     limit: Annotated[int, Query(ge=1, lt=50)] = 10,
     cursor: Annotated[str | None, Query()] = None,
 ):
     """
     Retrieve a paginated list of all users.
     Supports optional filtering by department and role.
+    Can retrieve active and deleted users.
+    Left active unset for both active and deleted result.
     Restricted to ADMIN and MANAGER roles only.
     """
     return await service.get_users_service(
-        department_id, role, limit=limit, cursor=cursor
+        department_id, role, active=active, limit=limit, cursor=cursor
     )
 
 
@@ -104,6 +108,24 @@ async def change_password(
     await service.change_password_service(form_data, current_user)
 
 
+@router.get(
+    "/admin/{user_id}",
+    response_model=UserAdminResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_user_info(
+    user_id: UUID,
+    service: UserServiceDep,
+):
+    """
+    Retrieve a single user by their ID.
+    Raises 404 if the user does not exist.
+    Admin and Manger only
+    Contains user's timestamps
+    """
+    return await service.get_user_info_service(user_id)
+
+
 @router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
 async def get_user(
     user_id: UUID,
@@ -133,7 +155,7 @@ async def update_user(
     return await service.update_user_service(user_id, form_data)
 
 
-@router.post("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/delete/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: UUID,
     service: UserServiceDep,
@@ -147,3 +169,17 @@ async def delete_user(
     Restricted to ADMIN role only.
     """
     await service.delete_user_service(user_id)
+
+
+@router.post("/recover/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def recover_user(
+    user_id: UUID,
+    service: UserServiceDep,
+    current_user: AdminOnly,
+):
+    """
+    Recover soft-deleted user
+    Raises 404 if the user does not exist
+    Restricted to ADMIN role only.
+    """
+    await service.recover_user_service(user_id)

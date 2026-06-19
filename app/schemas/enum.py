@@ -8,6 +8,11 @@ class Role(str, Enum):
     MEMBER = "member"
 
 
+class Active(str, Enum):
+    TRUE = "true"
+    FALSE = "false"
+
+
 # tasks
 class TaskStatus(str, Enum):
     PENDING = "pending"

@@ -24,6 +24,9 @@ class AuthService:
         if not user or not verify_password(password, user.hashed_password):
             raise CredentialsException()
 
+        if user.deleted_at:
+            raise BadRequestException("Your account is deactivated, recover it first")
+
         access_token = create_access_token({"sub": str(user.id)})
         refresh_token = create_refresh_token()
 
